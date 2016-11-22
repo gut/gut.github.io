@@ -1,0 +1,1449 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>hotspot Sdiff src/cpu/ppc/vm </title>
+</head><body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/c1_FrameMap_ppc.hpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/register_ppc.hpp.sdiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/ppc.ad</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-12310">12310</a> : Reserve R30 to a cleared content register on C1 and C2 code
+
+Several times a 0 is loaded to a register as a temporary value. This can be
+improved by caching a 0 into a register.
+
+I didn't notice a performance drop since only applying this patch showed no
+drop of performance, hence there are more registers available than normally
+needed and this caching technique can be applied.
+
+Despite setting R30_zero as a dedicated register and initialized with 0 for the
+C1 and C2 code, new rules for storing 0 related to stb,sth,stw,std were added.</pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+ 283 
+ 284 alloc_class chunk0 (
+ 285   // Chunk0 contains *all* 64 integer registers halves.
+ 286 
+ 287   // "non-volatile" registers
+ 288   R14, R14_H,
+ 289   R15, R15_H,
+ 290   R17, R17_H,
+ 291   R18, R18_H,
+ 292   R19, R19_H,
+ 293   R20, R20_H,
+ 294   R21, R21_H,
+ 295   R22, R22_H,
+ 296   R23, R23_H,
+ 297   R24, R24_H,
+ 298   R25, R25_H,
+ 299   R26, R26_H,
+ 300   R27, R27_H,
+ 301   R28, R28_H,
+ 302   R29, R29_H,
+<span class="removed"> 303   R30, R30_H,</span>
+ 304   R31, R31_H,
+ 305 
+ 306   // scratch/special registers
+ 307   R11, R11_H,
+ 308   R12, R12_H,
+ 309 
+ 310   // argument registers
+ 311   R10, R10_H,
+ 312   R9,  R9_H,
+ 313   R8,  R8_H,
+ 314   R7,  R7_H,
+ 315   R6,  R6_H,
+ 316   R5,  R5_H,
+ 317   R4,  R4_H,
+ 318   R3,  R3_H,
+ 319 
+ 320   // special registers, not available for allocation
+
+ 321   R16, R16_H,     // R16_thread
+ 322   R13, R13_H,     // system thread id
+ 323   R2,  R2_H,      // may be used for TOC
+ 324   R1,  R1_H,      // SP
+ 325   R0,  R0_H       // R0 (scratch)
+ 326 );
+ 327 
+ 328 // If you change this allocation class, please have a look at the
+ 329 // default values for the parameters RoundRobinIntegerRegIntervalStart
+ 330 // and RoundRobinFloatRegIntervalStart
+ 331 
+ 332 alloc_class chunk1 (
+ 333   // Chunk1 contains *all* 64 floating-point registers halves.
+ 334 
+ 335   // scratch register
+ 336   F0,  F0_H,
+ 337 
+ 338   // argument registers
+ 339   F13, F13_H,
+ 340   F12, F12_H,
+
+</pre><hr></hr><pre>
+ 431   R10,
+ 432   R11,
+ 433   R12,
+ 434 /*R13*/             // system thread id
+ 435   R14,
+ 436   R15,
+ 437 /*R16*/             // R16_thread
+ 438   R17,
+ 439   R18,
+ 440   R19,
+ 441   R20,
+ 442   R21,
+ 443   R22,
+ 444   R23,
+ 445   R24,
+ 446   R25,
+ 447   R26,
+ 448   R27,
+ 449   R28,
+ 450 /*R29,*/             // global TOC
+<span class="changed"> 451   R30,</span>
+ 452   R31
+ 453 );
+ 454 
+ 455 // 32 bit registers that can only be read i.e. these registers can
+ 456 // only be src of all instructions.
+ 457 reg_class bits32_reg_ro(
+ 458 /*R0*/              // R0
+ 459 /*R1*/              // SP
+ 460   R2                // TOC
+ 461   R3,
+ 462   R4,
+ 463   R5,
+ 464   R6,
+ 465   R7,
+ 466   R8,
+ 467   R9,
+ 468   R10,
+ 469   R11,
+ 470   R12,
+ 471 /*R13*/             // system thread id
+ 472   R14,
+ 473   R15,
+ 474 /*R16*/             // R16_thread
+ 475   R17,
+ 476   R18,
+ 477   R19,
+ 478   R20,
+ 479   R21,
+ 480   R22,
+ 481   R23,
+ 482   R24,
+ 483   R25,
+ 484   R26,
+ 485   R27,
+ 486   R28,
+ 487 /*R29,*/
+<span class="changed"> 488   R30,</span>
+ 489   R31
+ 490 );
+ 491 
+ 492 reg_class rscratch1_bits32_reg(R11);
+ 493 reg_class rscratch2_bits32_reg(R12);
+ 494 reg_class rarg1_bits32_reg(R3);
+ 495 reg_class rarg2_bits32_reg(R4);
+ 496 reg_class rarg3_bits32_reg(R5);
+ 497 reg_class rarg4_bits32_reg(R6);
+ 498 
+ 499 // ----------------------------
+ 500 // 64 Bit Register Classes
+ 501 // ----------------------------
+ 502 // 64-bit build means 64-bit pointers means hi/lo pairs
+ 503 
+ 504 reg_class rscratch1_bits64_reg(R11_H, R11);
+ 505 reg_class rscratch2_bits64_reg(R12_H, R12);
+ 506 reg_class rarg1_bits64_reg(R3_H, R3);
+ 507 reg_class rarg2_bits64_reg(R4_H, R4);
+ 508 reg_class rarg3_bits64_reg(R5_H, R5);
+
+</pre><hr></hr><pre>
+ 528   R10_H, R10,
+ 529   R11_H, R11,
+ 530   R12_H, R12,
+ 531 /*R13_H, R13*/   // system thread id
+ 532   R14_H, R14,
+ 533   R15_H, R15,
+ 534 /*R16_H, R16*/   // R16_thread
+ 535   R17_H, R17,
+ 536   R18_H, R18,
+ 537   R19_H, R19,
+ 538   R20_H, R20,
+ 539   R21_H, R21,
+ 540   R22_H, R22,
+ 541   R23_H, R23,
+ 542   R24_H, R24,
+ 543   R25_H, R25,
+ 544   R26_H, R26,
+ 545   R27_H, R27,
+ 546   R28_H, R28,
+ 547 /*R29_H, R29,*/
+<span class="changed"> 548   R30_H, R30,</span>
+ 549   R31_H, R31
+ 550 );
+ 551 
+ 552 // 64 bit registers used excluding r2, r11 and r12
+ 553 // Used to hold the TOC to avoid collisions with expanded LeafCall which uses
+ 554 // r2, r11 and r12 internally.
+ 555 reg_class bits64_reg_leaf_call(
+ 556 /*R0_H,  R0*/     // R0
+ 557 /*R1_H,  R1*/     // SP
+ 558 /*R2_H,  R2*/     // TOC
+ 559   R3_H,  R3,
+ 560   R4_H,  R4,
+ 561   R5_H,  R5,
+ 562   R6_H,  R6,
+ 563   R7_H,  R7,
+ 564   R8_H,  R8,
+ 565   R9_H,  R9,
+ 566   R10_H, R10,
+ 567 /*R11_H, R11*/
+ 568 /*R12_H, R12*/
+ 569 /*R13_H, R13*/   // system thread id
+ 570   R14_H, R14,
+ 571   R15_H, R15,
+ 572 /*R16_H, R16*/   // R16_thread
+ 573   R17_H, R17,
+ 574   R18_H, R18,
+ 575   R19_H, R19,
+ 576   R20_H, R20,
+ 577   R21_H, R21,
+ 578   R22_H, R22,
+ 579   R23_H, R23,
+ 580   R24_H, R24,
+ 581   R25_H, R25,
+ 582   R26_H, R26,
+ 583   R27_H, R27,
+ 584   R28_H, R28,
+ 585 /*R29_H, R29,*/
+<span class="changed"> 586   R30_H, R30,</span>
+ 587   R31_H, R31
+ 588 );
+ 589 
+ 590 // Used to hold the TOC to avoid collisions with expanded DynamicCall
+ 591 // which uses r19 as inline cache internally and expanded LeafCall which uses
+ 592 // r2, r11 and r12 internally.
+ 593 reg_class bits64_constant_table_base(
+ 594 /*R0_H,  R0*/     // R0
+ 595 /*R1_H,  R1*/     // SP
+ 596 /*R2_H,  R2*/     // TOC
+ 597   R3_H,  R3,
+ 598   R4_H,  R4,
+ 599   R5_H,  R5,
+ 600   R6_H,  R6,
+ 601   R7_H,  R7,
+ 602   R8_H,  R8,
+ 603   R9_H,  R9,
+ 604   R10_H, R10,
+ 605 /*R11_H, R11*/
+ 606 /*R12_H, R12*/
+ 607 /*R13_H, R13*/   // system thread id
+ 608   R14_H, R14,
+ 609   R15_H, R15,
+ 610 /*R16_H, R16*/   // R16_thread
+ 611   R17_H, R17,
+ 612   R18_H, R18,
+ 613 /*R19_H, R19*/
+ 614   R20_H, R20,
+ 615   R21_H, R21,
+ 616   R22_H, R22,
+ 617   R23_H, R23,
+ 618   R24_H, R24,
+ 619   R25_H, R25,
+ 620   R26_H, R26,
+ 621   R27_H, R27,
+ 622   R28_H, R28,
+ 623 /*R29_H, R29,*/
+<span class="changed"> 624   R30_H, R30,</span>
+ 625   R31_H, R31
+ 626 );
+ 627 
+ 628 // 64 bit registers that can only be read i.e. these registers can
+ 629 // only be src of all instructions.
+ 630 reg_class bits64_reg_ro(
+ 631 /*R0_H,  R0*/     // R0
+ 632   R1_H,  R1,
+ 633   R2_H,  R2,       // TOC
+ 634   R3_H,  R3,
+ 635   R4_H,  R4,
+ 636   R5_H,  R5,
+ 637   R6_H,  R6,
+ 638   R7_H,  R7,
+ 639   R8_H,  R8,
+ 640   R9_H,  R9,
+ 641   R10_H, R10,
+ 642   R11_H, R11,
+ 643   R12_H, R12,
+ 644 /*R13_H, R13*/   // system thread id
+ 645   R14_H, R14,
+ 646   R15_H, R15,
+ 647   R16_H, R16,    // R16_thread
+ 648   R17_H, R17,
+ 649   R18_H, R18,
+ 650   R19_H, R19,
+ 651   R20_H, R20,
+ 652   R21_H, R21,
+ 653   R22_H, R22,
+ 654   R23_H, R23,
+ 655   R24_H, R24,
+ 656   R25_H, R25,
+ 657   R26_H, R26,
+ 658   R27_H, R27,
+ 659   R28_H, R28,
+ 660 /*R29_H, R29,*/ // TODO: let allocator handle TOC!!
+<span class="changed"> 661   R30_H, R30,</span>
+ 662   R31_H, R31
+ 663 );
+ 664 
+ 665 
+ 666 // ----------------------------
+ 667 // Special Class for Condition Code Flags Register
+ 668 
+ 669 reg_class int_flags(
+ 670 /*CCR0*/             // scratch
+ 671 /*CCR1*/             // scratch
+ 672 /*CCR2*/             // nv!
+ 673 /*CCR3*/             // nv!
+ 674 /*CCR4*/             // nv!
+ 675   CCR5,
+ 676   CCR6,
+ 677   CCR7
+ 678 );
+ 679 
+ 680 reg_class int_flags_ro(
+ 681   CCR0,
+
+</pre><hr></hr><pre>
+2783     // e.g. in call-stub and when returning from runtime stubs.
+2784     //
+2785     // Proposed code sequence for the cmove implementation:
+2786     //
+2787     // Label skip_release;
+2788     // __ beq(CCRfixed, skip_release);
+2789     // __ release();
+2790     // __ bind(skip_release);
+2791     // __ stb(card mark);
+2792 
+2793     MacroAssembler _masm(&amp;cbuf);
+2794     Label skip_storestore;
+2795 
+2796 #if 0 // TODO: PPC port
+2797     // Check CMSCollectorCardTableModRefBSExt::_requires_release and do the
+2798     // StoreStore barrier conditionally.
+2799     __ lwz(R0, 0, $releaseFieldAddr$$Register);
+2800     __ cmpwi($crx$$CondRegister, R0, 0);
+2801     __ beq_predict_taken($crx$$CondRegister, skip_storestore);
+2802 #endif
+<span class="removed">2803     __ li(R0, 0);</span>
+2804     __ membar(Assembler::StoreStore);
+2805 #if 0 // TODO: PPC port
+2806     __ bind(skip_storestore);
+2807 #endif
+2808 
+2809     // Do the store.
+2810     if ($mem$$index == 0) {
+<span class="changed">2811       __ stb(R0, $mem$$disp, $mem$$base$$Register);</span>
+2812     } else {
+2813       assert(0 == $mem$$disp, "no displacement possible with indexed load/stores on ppc");
+<span class="changed">2814       __ stbx(R0, $mem$$base$$Register, $mem$$index$$Register);</span>
+2815     }
+2816   %}
+2817 
+2818   enc_class postalloc_expand_encode_oop(iRegNdst dst, iRegPdst src, flagsReg crx) %{
+2819 
+2820     if (VM_Version::has_isel()) {
+2821       // use isel instruction with Power 7
+2822       cmpP_reg_imm16Node *n_compare  = new cmpP_reg_imm16Node();
+2823       encodeP_subNode    *n_sub_base = new encodeP_subNode();
+2824       encodeP_shiftNode  *n_shift    = new encodeP_shiftNode();
+2825       cond_set_0_oopNode *n_cond_set = new cond_set_0_oopNode();
+2826 
+2827       n_compare-&gt;add_req(n_region, n_src);
+2828       n_compare-&gt;_opnds[0] = op_crx;
+2829       n_compare-&gt;_opnds[1] = op_src;
+2830       n_compare-&gt;_opnds[2] = new immL16Oper(0);
+2831 
+2832       n_sub_base-&gt;add_req(n_region, n_src);
+2833       n_sub_base-&gt;_opnds[0] = op_dst;
+2834       n_sub_base-&gt;_opnds[1] = op_src;
+
+</pre><hr></hr><pre>
+6263   ins_pipe(pipe_class_memory);
+6264 %}
+6265 
+6266 //----------Store Instructions-------------------------------------------------
+6267 
+6268 // Store Byte
+6269 instruct storeB(memory mem, iRegIsrc src) %{
+6270   match(Set mem (StoreB mem src));
+6271   ins_cost(MEMORY_REF_COST);
+6272 
+6273   format %{ "STB     $src, $mem \t// byte" %}
+6274   size(4);
+6275   ins_encode %{
+6276     // TODO: PPC port $archOpcode(ppc64Opcode_stb);
+6277     int Idisp = $mem$$disp + frame_slots_bias($mem$$base, ra_);
+6278     __ stb($src$$Register, Idisp, $mem$$base$$Register);
+6279   %}
+6280   ins_pipe(pipe_class_memory);
+6281 %}
+6282 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+6283 // Store Char/Short
+6284 instruct storeC(memory mem, iRegIsrc src) %{
+6285   match(Set mem (StoreC mem src));
+6286   ins_cost(MEMORY_REF_COST);
+6287 
+6288   format %{ "STH     $src, $mem \t// short" %}
+6289   size(4);
+6290   ins_encode %{
+6291     // TODO: PPC port $archOpcode(ppc64Opcode_sth);
+6292     int Idisp = $mem$$disp + frame_slots_bias($mem$$base, ra_);
+6293     __ sth($src$$Register, Idisp, $mem$$base$$Register);
+6294   %}
+6295   ins_pipe(pipe_class_memory);
+6296 %}
+6297 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+6298 // Store Integer
+6299 instruct storeI(memory mem, iRegIsrc src) %{
+6300   match(Set mem (StoreI mem src));
+6301   ins_cost(MEMORY_REF_COST);
+6302 
+6303   format %{ "STW     $src, $mem" %}
+6304   size(4);
+6305   ins_encode( enc_stw(src, mem) );
+6306   ins_pipe(pipe_class_memory);
+6307 %}
+6308 
+
+
+
+
+
+
+
+
+
+
+
+
+
+6309 // ConvL2I + StoreI.
+6310 instruct storeI_convL2I(memory mem, iRegLsrc src) %{
+6311   match(Set mem (StoreI mem (ConvL2I src)));
+6312   ins_cost(MEMORY_REF_COST);
+6313 
+6314   format %{ "STW     l2i($src), $mem" %}
+6315   size(4);
+6316   ins_encode( enc_stw(src, mem) );
+6317   ins_pipe(pipe_class_memory);
+6318 %}
+6319 
+6320 // Store Long
+6321 instruct storeL(memoryAlg4 mem, iRegLsrc src) %{
+6322   match(Set mem (StoreL mem src));
+6323   ins_cost(MEMORY_REF_COST);
+6324 
+6325   format %{ "STD     $src, $mem \t// long" %}
+6326   size(4);
+6327   ins_encode( enc_std(src, mem) );
+6328   ins_pipe(pipe_class_memory);
+6329 %}
+6330 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+6331 // Store super word nodes.
+6332 
+6333 // Store Aligned Packed Byte long register to memory
+6334 instruct storeA8B(memoryAlg4 mem, iRegLsrc src) %{
+6335   predicate(n-&gt;as_StoreVector()-&gt;memory_size() == 8);
+6336   match(Set mem (StoreVector mem src));
+6337   ins_cost(MEMORY_REF_COST);
+6338 
+6339   format %{ "STD     $mem, $src \t// packed8B" %}
+6340   size(4);
+6341   ins_encode( enc_std(src, mem) );
+6342   ins_pipe(pipe_class_memory);
+6343 %}
+6344 
+6345 // Store Compressed Oop
+6346 instruct storeN(memory dst, iRegN_P2N src) %{
+6347   match(Set dst (StoreN dst src));
+6348   ins_cost(MEMORY_REF_COST);
+6349 
+6350   format %{ "STW     $src, $dst \t// compressed oop" %}
+
+</pre><hr></hr><pre>
+6431   expand %{
+6432     immL baseImm %{ 0 /* TODO: PPC port (jlong)CMSCollectorCardTableModRefBSExt::requires_release_address() */ %}
+6433     iRegLdst releaseFieldAddress;
+6434     flagsReg crx;
+6435     loadConL_Ex(releaseFieldAddress, baseImm);
+6436     storeCM_CMS(mem, releaseFieldAddress, crx);
+6437   %}
+6438 %}
+6439 
+6440 instruct storeCM_G1(memory mem, immI_0 zero) %{
+6441   match(Set mem (StoreCM mem zero));
+6442   predicate(UseG1GC);
+6443   ins_cost(MEMORY_REF_COST);
+6444 
+6445   ins_cannot_rematerialize(true);
+6446 
+6447   format %{ "STB     #0, $mem \t// CMS card-mark byte store (G1)" %}
+6448   size(8);
+6449   ins_encode %{
+6450     // TODO: PPC port $archOpcode(ppc64Opcode_compound);
+<span class="removed">6451     __ li(R0, 0);</span>
+6452     //__ release(); // G1: oops are allowed to get visible after dirty marking
+6453     guarantee($mem$$base$$Register != R1_SP, "use frame_slots_bias");
+<span class="changed">6454     __ stb(R0, $mem$$disp, $mem$$base$$Register);</span>
+6455   %}
+6456   ins_pipe(pipe_class_memory);
+6457 %}
+6458 
+6459 // Convert oop pointer into compressed form.
+6460 
+6461 // Nodes for postalloc expand.
+6462 
+6463 // Shift node for expand.
+6464 instruct encodeP_shift(iRegNdst dst, iRegNsrc src) %{
+6465   // The match rule is needed to make it a 'MachTypeNode'!
+6466   match(Set dst (EncodeP src));
+6467   predicate(false);
+6468 
+6469   format %{ "SRDI    $dst, $src, 3 \t// encode" %}
+6470   size(4);
+6471   ins_encode %{
+6472     // TODO: PPC port $archOpcode(ppc64Opcode_rldicl);
+6473     __ srdi($dst$$Register, $src$$Register, Universe::narrow_oop_shift() &amp; 0x3f);
+6474   %}
+
+</pre><hr></hr><pre>
+11279     // TODO: PPC port $archOpcode(ppc64Opcode_fcmpu);
+11280     __ fcmpu($crx$$CondRegister, $src1$$FloatRegister, $src2$$FloatRegister);
+11281   %}
+11282   ins_pipe(pipe_class_default);
+11283 %}
+11284 
+11285 instruct cmov_bns_less(flagsReg crx) %{
+11286   // no match-rule, false predicate
+11287   effect(DEF crx);
+11288   predicate(false);
+11289 
+11290   ins_variable_size_depending_on_alignment(true);
+11291 
+11292   format %{ "cmov    $crx" %}
+11293   // Worst case is branch + move + stop, no stop without scheduler.
+11294   size(false /* TODO: PPC PORT(InsertEndGroupPPC64 &amp;&amp; Compile::current()-&gt;do_hb_scheduling())*/ ? 16 : 12);
+11295   ins_encode %{
+11296     // TODO: PPC port $archOpcode(ppc64Opcode_cmovecr);
+11297     Label done;
+11298     __ bns($crx$$CondRegister, done);        // not unordered -&gt; keep crx
+<span class="changed">11299     __ li(R0, 0);</span>
+<span class="changed">11300     __ cmpwi($crx$$CondRegister, R0, 1);     // unordered -&gt; set crx to 'less'</span>
+11301     // TODO PPC port __ endgroup_if_needed(_size == 16);
+11302     __ bind(done);
+11303   %}
+11304   ins_pipe(pipe_class_default);
+11305 %}
+11306 
+11307 // Compare floating, generate condition code.
+11308 instruct cmpF_reg_reg_Ex(flagsReg crx, regF src1, regF src2) %{
+11309   // FIXME: should we match 'If cmp (CmpF src1 src2))' ??
+11310   //
+11311   // The following code sequence occurs a lot in mpegaudio:
+11312   //
+11313   // block BXX:
+11314   // 0: instruct cmpFUnordered_reg_reg (cmpF_reg_reg-0):
+11315   //    cmpFUrd CCR6, F11, F9
+11316   // 4: instruct cmov_bns_less (cmpF_reg_reg-1):
+11317   //    cmov CCR6
+11318   // 8: instruct branchConSched:
+11319   //    B_FARle CCR6, B56  P=0.500000 C=-1.000000
+11320   match(Set crx (CmpF src1 src2));
+
+</pre><hr></hr><pre>
+12731   ins_encode %{
+12732     // TODO: PPC port $archOpcode(ppc64Opcode_addi);
+12733     __ li($dst$$Register, 0x0);
+12734   %}
+12735   ins_pipe(pipe_class_default);
+12736 %}
+12737 
+12738 
+12739 //----------Overflow Math Instructions-----------------------------------------
+12740 
+12741 // Note that we have to make sure that XER.SO is reset before using overflow instructions.
+12742 // Simple Overflow operations can be matched by very few instructions (e.g. addExact: xor, and_, bc).
+12743 // Seems like only Long intrinsincs have an advantage. (The only expensive one is OverflowMulL.)
+12744 
+12745 instruct overflowAddL_reg_reg(flagsRegCR0 cr0, iRegLsrc op1, iRegLsrc op2) %{
+12746   match(Set cr0 (OverflowAddL op1 op2));
+12747 
+12748   format %{ "add_    $op1, $op2\t# overflow check long" %}
+12749   ins_encode %{
+12750     // TODO: PPC port $archOpcode(ppc64Opcode_compound);
+<span class="changed">12751     __ li(R0, 0);</span>
+<span class="changed">12752     __ mtxer(R0); // clear XER.SO</span>
+<span class="changed">12753     __ addo_(R0, $op1$$Register, $op2$$Register);</span>
+12754   %}
+12755   ins_pipe(pipe_class_default);
+12756 %}
+12757 
+12758 instruct overflowSubL_reg_reg(flagsRegCR0 cr0, iRegLsrc op1, iRegLsrc op2) %{
+12759   match(Set cr0 (OverflowSubL op1 op2));
+12760 
+12761   format %{ "subfo_  R0, $op2, $op1\t# overflow check long" %}
+12762   ins_encode %{
+12763     // TODO: PPC port $archOpcode(ppc64Opcode_compound);
+<span class="changed">12764     __ li(R0, 0);</span>
+<span class="changed">12765     __ mtxer(R0); // clear XER.SO</span>
+<span class="changed">12766     __ subfo_(R0, $op2$$Register, $op1$$Register);</span>
+12767   %}
+12768   ins_pipe(pipe_class_default);
+12769 %}
+12770 
+12771 instruct overflowNegL_reg(flagsRegCR0 cr0, immL_0 zero, iRegLsrc op2) %{
+12772   match(Set cr0 (OverflowSubL zero op2));
+12773 
+12774   format %{ "nego_   R0, $op2\t# overflow check long" %}
+12775   ins_encode %{
+12776     // TODO: PPC port $archOpcode(ppc64Opcode_compound);
+<span class="changed">12777     __ li(R0, 0);</span>
+<span class="changed">12778     __ mtxer(R0); // clear XER.SO</span>
+<span class="changed">12779     __ nego_(R0, $op2$$Register);</span>
+12780   %}
+12781   ins_pipe(pipe_class_default);
+12782 %}
+12783 
+12784 instruct overflowMulL_reg_reg(flagsRegCR0 cr0, iRegLsrc op1, iRegLsrc op2) %{
+12785   match(Set cr0 (OverflowMulL op1 op2));
+12786 
+12787   format %{ "mulldo_ R0, $op1, $op2\t# overflow check long" %}
+12788   ins_encode %{
+12789     // TODO: PPC port $archOpcode(ppc64Opcode_compound);
+<span class="changed">12790     __ li(R0, 0);</span>
+<span class="changed">12791     __ mtxer(R0); // clear XER.SO</span>
+<span class="changed">12792     __ mulldo_(R0, $op1$$Register, $op2$$Register);</span>
+12793   %}
+12794   ins_pipe(pipe_class_default);
+12795 %}
+12796 
+12797 
+12798 // ============================================================================
+12799 // Safepoint Instruction
+12800 
+12801 instruct safePoint_poll(iRegPdst poll) %{
+12802   match(SafePoint poll);
+12803   predicate(LoadPollAddressFromThread);
+12804 
+12805   // It caused problems to add the effect that r0 is killed, but this
+12806   // effect no longer needs to be mentioned, since r0 is not contained
+12807   // in a reg_class.
+12808 
+12809   format %{ "LD      R0, #0, $poll \t// Safepoint poll for GC" %}
+12810   size(4);
+12811   ins_encode( enc_poll(0x0, poll) );
+12812   ins_pipe(pipe_class_default);
+
+</pre><hr></hr>
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+ 283 
+ 284 alloc_class chunk0 (
+ 285   // Chunk0 contains *all* 64 integer registers halves.
+ 286 
+ 287   // "non-volatile" registers
+ 288   R14, R14_H,
+ 289   R15, R15_H,
+ 290   R17, R17_H,
+ 291   R18, R18_H,
+ 292   R19, R19_H,
+ 293   R20, R20_H,
+ 294   R21, R21_H,
+ 295   R22, R22_H,
+ 296   R23, R23_H,
+ 297   R24, R24_H,
+ 298   R25, R25_H,
+ 299   R26, R26_H,
+ 300   R27, R27_H,
+ 301   R28, R28_H,
+ 302   R29, R29_H,
+
+ 303   R31, R31_H,
+ 304 
+ 305   // scratch/special registers
+ 306   R11, R11_H,
+ 307   R12, R12_H,
+ 308 
+ 309   // argument registers
+ 310   R10, R10_H,
+ 311   R9,  R9_H,
+ 312   R8,  R8_H,
+ 313   R7,  R7_H,
+ 314   R6,  R6_H,
+ 315   R5,  R5_H,
+ 316   R4,  R4_H,
+ 317   R3,  R3_H,
+ 318 
+ 319   // special registers, not available for allocation
+<span class="new"> 320   R30, R30_H,     // R30_zero</span>
+ 321   R16, R16_H,     // R16_thread
+ 322   R13, R13_H,     // system thread id
+ 323   R2,  R2_H,      // may be used for TOC
+ 324   R1,  R1_H,      // SP
+ 325   R0,  R0_H       // R0 (scratch)
+ 326 );
+ 327 
+ 328 // If you change this allocation class, please have a look at the
+ 329 // default values for the parameters RoundRobinIntegerRegIntervalStart
+ 330 // and RoundRobinFloatRegIntervalStart
+ 331 
+ 332 alloc_class chunk1 (
+ 333   // Chunk1 contains *all* 64 floating-point registers halves.
+ 334 
+ 335   // scratch register
+ 336   F0,  F0_H,
+ 337 
+ 338   // argument registers
+ 339   F13, F13_H,
+ 340   F12, F12_H,
+
+</pre><hr></hr><pre>
+ 431   R10,
+ 432   R11,
+ 433   R12,
+ 434 /*R13*/             // system thread id
+ 435   R14,
+ 436   R15,
+ 437 /*R16*/             // R16_thread
+ 438   R17,
+ 439   R18,
+ 440   R19,
+ 441   R20,
+ 442   R21,
+ 443   R22,
+ 444   R23,
+ 445   R24,
+ 446   R25,
+ 447   R26,
+ 448   R27,
+ 449   R28,
+ 450 /*R29,*/             // global TOC
+<span class="changed"> 451 /*R30,*/             // R30_zero</span>
+ 452   R31
+ 453 );
+ 454 
+ 455 // 32 bit registers that can only be read i.e. these registers can
+ 456 // only be src of all instructions.
+ 457 reg_class bits32_reg_ro(
+ 458 /*R0*/              // R0
+ 459 /*R1*/              // SP
+ 460   R2                // TOC
+ 461   R3,
+ 462   R4,
+ 463   R5,
+ 464   R6,
+ 465   R7,
+ 466   R8,
+ 467   R9,
+ 468   R10,
+ 469   R11,
+ 470   R12,
+ 471 /*R13*/             // system thread id
+ 472   R14,
+ 473   R15,
+ 474 /*R16*/             // R16_thread
+ 475   R17,
+ 476   R18,
+ 477   R19,
+ 478   R20,
+ 479   R21,
+ 480   R22,
+ 481   R23,
+ 482   R24,
+ 483   R25,
+ 484   R26,
+ 485   R27,
+ 486   R28,
+ 487 /*R29,*/
+<span class="changed"> 488 /*R30,*/            // R30_zero</span>
+ 489   R31
+ 490 );
+ 491 
+ 492 reg_class rscratch1_bits32_reg(R11);
+ 493 reg_class rscratch2_bits32_reg(R12);
+ 494 reg_class rarg1_bits32_reg(R3);
+ 495 reg_class rarg2_bits32_reg(R4);
+ 496 reg_class rarg3_bits32_reg(R5);
+ 497 reg_class rarg4_bits32_reg(R6);
+ 498 
+ 499 // ----------------------------
+ 500 // 64 Bit Register Classes
+ 501 // ----------------------------
+ 502 // 64-bit build means 64-bit pointers means hi/lo pairs
+ 503 
+ 504 reg_class rscratch1_bits64_reg(R11_H, R11);
+ 505 reg_class rscratch2_bits64_reg(R12_H, R12);
+ 506 reg_class rarg1_bits64_reg(R3_H, R3);
+ 507 reg_class rarg2_bits64_reg(R4_H, R4);
+ 508 reg_class rarg3_bits64_reg(R5_H, R5);
+
+</pre><hr></hr><pre>
+ 528   R10_H, R10,
+ 529   R11_H, R11,
+ 530   R12_H, R12,
+ 531 /*R13_H, R13*/   // system thread id
+ 532   R14_H, R14,
+ 533   R15_H, R15,
+ 534 /*R16_H, R16*/   // R16_thread
+ 535   R17_H, R17,
+ 536   R18_H, R18,
+ 537   R19_H, R19,
+ 538   R20_H, R20,
+ 539   R21_H, R21,
+ 540   R22_H, R22,
+ 541   R23_H, R23,
+ 542   R24_H, R24,
+ 543   R25_H, R25,
+ 544   R26_H, R26,
+ 545   R27_H, R27,
+ 546   R28_H, R28,
+ 547 /*R29_H, R29,*/
+<span class="changed"> 548 /*R30_H, R30,*/  // R30_zero</span>
+ 549   R31_H, R31
+ 550 );
+ 551 
+ 552 // 64 bit registers used excluding r2, r11 and r12
+ 553 // Used to hold the TOC to avoid collisions with expanded LeafCall which uses
+ 554 // r2, r11 and r12 internally.
+ 555 reg_class bits64_reg_leaf_call(
+ 556 /*R0_H,  R0*/     // R0
+ 557 /*R1_H,  R1*/     // SP
+ 558 /*R2_H,  R2*/     // TOC
+ 559   R3_H,  R3,
+ 560   R4_H,  R4,
+ 561   R5_H,  R5,
+ 562   R6_H,  R6,
+ 563   R7_H,  R7,
+ 564   R8_H,  R8,
+ 565   R9_H,  R9,
+ 566   R10_H, R10,
+ 567 /*R11_H, R11*/
+ 568 /*R12_H, R12*/
+ 569 /*R13_H, R13*/   // system thread id
+ 570   R14_H, R14,
+ 571   R15_H, R15,
+ 572 /*R16_H, R16*/   // R16_thread
+ 573   R17_H, R17,
+ 574   R18_H, R18,
+ 575   R19_H, R19,
+ 576   R20_H, R20,
+ 577   R21_H, R21,
+ 578   R22_H, R22,
+ 579   R23_H, R23,
+ 580   R24_H, R24,
+ 581   R25_H, R25,
+ 582   R26_H, R26,
+ 583   R27_H, R27,
+ 584   R28_H, R28,
+ 585 /*R29_H, R29,*/
+<span class="changed"> 586 /*R30_H, R30,*/  // R30_zero</span>
+ 587   R31_H, R31
+ 588 );
+ 589 
+ 590 // Used to hold the TOC to avoid collisions with expanded DynamicCall
+ 591 // which uses r19 as inline cache internally and expanded LeafCall which uses
+ 592 // r2, r11 and r12 internally.
+ 593 reg_class bits64_constant_table_base(
+ 594 /*R0_H,  R0*/     // R0
+ 595 /*R1_H,  R1*/     // SP
+ 596 /*R2_H,  R2*/     // TOC
+ 597   R3_H,  R3,
+ 598   R4_H,  R4,
+ 599   R5_H,  R5,
+ 600   R6_H,  R6,
+ 601   R7_H,  R7,
+ 602   R8_H,  R8,
+ 603   R9_H,  R9,
+ 604   R10_H, R10,
+ 605 /*R11_H, R11*/
+ 606 /*R12_H, R12*/
+ 607 /*R13_H, R13*/   // system thread id
+ 608   R14_H, R14,
+ 609   R15_H, R15,
+ 610 /*R16_H, R16*/   // R16_thread
+ 611   R17_H, R17,
+ 612   R18_H, R18,
+ 613 /*R19_H, R19*/
+ 614   R20_H, R20,
+ 615   R21_H, R21,
+ 616   R22_H, R22,
+ 617   R23_H, R23,
+ 618   R24_H, R24,
+ 619   R25_H, R25,
+ 620   R26_H, R26,
+ 621   R27_H, R27,
+ 622   R28_H, R28,
+ 623 /*R29_H, R29,*/
+<span class="changed"> 624 /*R30_H, R30,*/  // R30_zero</span>
+ 625   R31_H, R31
+ 626 );
+ 627 
+ 628 // 64 bit registers that can only be read i.e. these registers can
+ 629 // only be src of all instructions.
+ 630 reg_class bits64_reg_ro(
+ 631 /*R0_H,  R0*/     // R0
+ 632   R1_H,  R1,
+ 633   R2_H,  R2,       // TOC
+ 634   R3_H,  R3,
+ 635   R4_H,  R4,
+ 636   R5_H,  R5,
+ 637   R6_H,  R6,
+ 638   R7_H,  R7,
+ 639   R8_H,  R8,
+ 640   R9_H,  R9,
+ 641   R10_H, R10,
+ 642   R11_H, R11,
+ 643   R12_H, R12,
+ 644 /*R13_H, R13*/   // system thread id
+ 645   R14_H, R14,
+ 646   R15_H, R15,
+ 647   R16_H, R16,    // R16_thread
+ 648   R17_H, R17,
+ 649   R18_H, R18,
+ 650   R19_H, R19,
+ 651   R20_H, R20,
+ 652   R21_H, R21,
+ 653   R22_H, R22,
+ 654   R23_H, R23,
+ 655   R24_H, R24,
+ 656   R25_H, R25,
+ 657   R26_H, R26,
+ 658   R27_H, R27,
+ 659   R28_H, R28,
+ 660 /*R29_H, R29,*/ // TODO: let allocator handle TOC!!
+<span class="changed"> 661 /*R30_H, R30,*/  // R30_zero</span>
+ 662   R31_H, R31
+ 663 );
+ 664 
+ 665 
+ 666 // ----------------------------
+ 667 // Special Class for Condition Code Flags Register
+ 668 
+ 669 reg_class int_flags(
+ 670 /*CCR0*/             // scratch
+ 671 /*CCR1*/             // scratch
+ 672 /*CCR2*/             // nv!
+ 673 /*CCR3*/             // nv!
+ 674 /*CCR4*/             // nv!
+ 675   CCR5,
+ 676   CCR6,
+ 677   CCR7
+ 678 );
+ 679 
+ 680 reg_class int_flags_ro(
+ 681   CCR0,
+
+</pre><hr></hr><pre>
+2783     // e.g. in call-stub and when returning from runtime stubs.
+2784     //
+2785     // Proposed code sequence for the cmove implementation:
+2786     //
+2787     // Label skip_release;
+2788     // __ beq(CCRfixed, skip_release);
+2789     // __ release();
+2790     // __ bind(skip_release);
+2791     // __ stb(card mark);
+2792 
+2793     MacroAssembler _masm(&amp;cbuf);
+2794     Label skip_storestore;
+2795 
+2796 #if 0 // TODO: PPC port
+2797     // Check CMSCollectorCardTableModRefBSExt::_requires_release and do the
+2798     // StoreStore barrier conditionally.
+2799     __ lwz(R0, 0, $releaseFieldAddr$$Register);
+2800     __ cmpwi($crx$$CondRegister, R0, 0);
+2801     __ beq_predict_taken($crx$$CondRegister, skip_storestore);
+2802 #endif
+
+2803     __ membar(Assembler::StoreStore);
+2804 #if 0 // TODO: PPC port
+2805     __ bind(skip_storestore);
+2806 #endif
+2807 
+2808     // Do the store.
+2809     if ($mem$$index == 0) {
+<span class="changed">2810       __ stb(R30_zero, $mem$$disp, $mem$$base$$Register);</span>
+2811     } else {
+2812       assert(0 == $mem$$disp, "no displacement possible with indexed load/stores on ppc");
+<span class="changed">2813       __ stbx(R30_zero, $mem$$base$$Register, $mem$$index$$Register);</span>
+2814     }
+2815   %}
+2816 
+2817   enc_class postalloc_expand_encode_oop(iRegNdst dst, iRegPdst src, flagsReg crx) %{
+2818 
+2819     if (VM_Version::has_isel()) {
+2820       // use isel instruction with Power 7
+2821       cmpP_reg_imm16Node *n_compare  = new cmpP_reg_imm16Node();
+2822       encodeP_subNode    *n_sub_base = new encodeP_subNode();
+2823       encodeP_shiftNode  *n_shift    = new encodeP_shiftNode();
+2824       cond_set_0_oopNode *n_cond_set = new cond_set_0_oopNode();
+2825 
+2826       n_compare-&gt;add_req(n_region, n_src);
+2827       n_compare-&gt;_opnds[0] = op_crx;
+2828       n_compare-&gt;_opnds[1] = op_src;
+2829       n_compare-&gt;_opnds[2] = new immL16Oper(0);
+2830 
+2831       n_sub_base-&gt;add_req(n_region, n_src);
+2832       n_sub_base-&gt;_opnds[0] = op_dst;
+2833       n_sub_base-&gt;_opnds[1] = op_src;
+
+</pre><hr></hr><pre>
+6262   ins_pipe(pipe_class_memory);
+6263 %}
+6264 
+6265 //----------Store Instructions-------------------------------------------------
+6266 
+6267 // Store Byte
+6268 instruct storeB(memory mem, iRegIsrc src) %{
+6269   match(Set mem (StoreB mem src));
+6270   ins_cost(MEMORY_REF_COST);
+6271 
+6272   format %{ "STB     $src, $mem \t// byte" %}
+6273   size(4);
+6274   ins_encode %{
+6275     // TODO: PPC port $archOpcode(ppc64Opcode_stb);
+6276     int Idisp = $mem$$disp + frame_slots_bias($mem$$base, ra_);
+6277     __ stb($src$$Register, Idisp, $mem$$base$$Register);
+6278   %}
+6279   ins_pipe(pipe_class_memory);
+6280 %}
+6281 
+<span class="new">6282 instruct storeB_0(memory mem, immI_0 zero) %{</span>
+<span class="new">6283   match(Set mem (StoreB mem zero));</span>
+<span class="new">6284   ins_cost(MEMORY_REF_COST);</span>
+<span class="new">6285 </span>
+<span class="new">6286   format %{ "STB     0, $mem \t// store 0 on a byte" %}</span>
+<span class="new">6287   size(4);</span>
+<span class="new">6288   ins_encode %{</span>
+<span class="new">6289     // TODO: PPC port $archOpcode(ppc64Opcode_stb);</span>
+<span class="new">6290     int Idisp = $mem$$disp + frame_slots_bias($mem$$base, ra_);</span>
+<span class="new">6291     __ stb(R30_zero, Idisp, $mem$$base$$Register);</span>
+<span class="new">6292   %}</span>
+<span class="new">6293   ins_pipe(pipe_class_memory);</span>
+<span class="new">6294 %}</span>
+<span class="new">6295 </span>
+6296 // Store Char/Short
+6297 instruct storeC(memory mem, iRegIsrc src) %{
+6298   match(Set mem (StoreC mem src));
+6299   ins_cost(MEMORY_REF_COST);
+6300 
+6301   format %{ "STH     $src, $mem \t// short" %}
+6302   size(4);
+6303   ins_encode %{
+6304     // TODO: PPC port $archOpcode(ppc64Opcode_sth);
+6305     int Idisp = $mem$$disp + frame_slots_bias($mem$$base, ra_);
+6306     __ sth($src$$Register, Idisp, $mem$$base$$Register);
+6307   %}
+6308   ins_pipe(pipe_class_memory);
+6309 %}
+6310 
+<span class="new">6311 instruct storeC_0(memory mem, immI_0 zero) %{</span>
+<span class="new">6312   match(Set mem (StoreC mem zero));</span>
+<span class="new">6313   ins_cost(MEMORY_REF_COST);</span>
+<span class="new">6314 </span>
+<span class="new">6315   format %{ "STH     0, $mem \t// store 0 on a short" %}</span>
+<span class="new">6316   size(4);</span>
+<span class="new">6317   ins_encode %{</span>
+<span class="new">6318     // TODO: PPC port $archOpcode(ppc64Opcode_sth);</span>
+<span class="new">6319     int Idisp = $mem$$disp + frame_slots_bias($mem$$base, ra_);</span>
+<span class="new">6320     __ sth(R30_zero, Idisp, $mem$$base$$Register);</span>
+<span class="new">6321   %}</span>
+<span class="new">6322   ins_pipe(pipe_class_memory);</span>
+<span class="new">6323 %}</span>
+<span class="new">6324 </span>
+6325 // Store Integer
+6326 instruct storeI(memory mem, iRegIsrc src) %{
+6327   match(Set mem (StoreI mem src));
+6328   ins_cost(MEMORY_REF_COST);
+6329 
+6330   format %{ "STW     $src, $mem" %}
+6331   size(4);
+6332   ins_encode( enc_stw(src, mem) );
+6333   ins_pipe(pipe_class_memory);
+6334 %}
+6335 
+<span class="new">6336 instruct storeI_0(memory mem, immI_0 zero) %{</span>
+<span class="new">6337   match(Set mem (StoreI mem zero));</span>
+<span class="new">6338   ins_cost(MEMORY_REF_COST);</span>
+<span class="new">6339 </span>
+<span class="new">6340   format %{ "STW     0, $mem \t// store 0 on a word" %}</span>
+<span class="new">6341   size(4);</span>
+<span class="new">6342   ins_encode %{</span>
+<span class="new">6343     int Idisp = $mem$$disp + frame_slots_bias($mem$$base, ra_);</span>
+<span class="new">6344     __ stw(R30_zero, Idisp, $mem$$base$$Register);</span>
+<span class="new">6345   %}</span>
+<span class="new">6346   ins_pipe(pipe_class_memory);</span>
+<span class="new">6347 %}</span>
+<span class="new">6348 </span>
+6349 // ConvL2I + StoreI.
+6350 instruct storeI_convL2I(memory mem, iRegLsrc src) %{
+6351   match(Set mem (StoreI mem (ConvL2I src)));
+6352   ins_cost(MEMORY_REF_COST);
+6353 
+6354   format %{ "STW     l2i($src), $mem" %}
+6355   size(4);
+6356   ins_encode( enc_stw(src, mem) );
+6357   ins_pipe(pipe_class_memory);
+6358 %}
+6359 
+6360 // Store Long
+6361 instruct storeL(memoryAlg4 mem, iRegLsrc src) %{
+6362   match(Set mem (StoreL mem src));
+6363   ins_cost(MEMORY_REF_COST);
+6364 
+6365   format %{ "STD     $src, $mem \t// long" %}
+6366   size(4);
+6367   ins_encode( enc_std(src, mem) );
+6368   ins_pipe(pipe_class_memory);
+6369 %}
+6370 
+<span class="new">6371 instruct storeL_0(memoryAlg4 mem, immL_0 zero) %{</span>
+<span class="new">6372   match(Set mem (StoreL mem zero));</span>
+<span class="new">6373   ins_cost(MEMORY_REF_COST);</span>
+<span class="new">6374 </span>
+<span class="new">6375   format %{ "STD     0, $mem \t// store 0 on a long" %}</span>
+<span class="new">6376   size(4);</span>
+<span class="new">6377   ins_encode %{</span>
+<span class="new">6378     int Idisp = $mem$$disp + frame_slots_bias($mem$$base, ra_);</span>
+<span class="new">6379     // Operand 'ds' requires 4-alignment.</span>
+<span class="new">6380     assert((Idisp &amp; 0x3) == 0, "unaligned offset");</span>
+<span class="new">6381     __ std(R30_zero, Idisp, $mem$$base$$Register);</span>
+<span class="new">6382   %}</span>
+<span class="new">6383   ins_pipe(pipe_class_memory);</span>
+<span class="new">6384 %}</span>
+<span class="new">6385 </span>
+6386 // Store super word nodes.
+6387 
+6388 // Store Aligned Packed Byte long register to memory
+6389 instruct storeA8B(memoryAlg4 mem, iRegLsrc src) %{
+6390   predicate(n-&gt;as_StoreVector()-&gt;memory_size() == 8);
+6391   match(Set mem (StoreVector mem src));
+6392   ins_cost(MEMORY_REF_COST);
+6393 
+6394   format %{ "STD     $mem, $src \t// packed8B" %}
+6395   size(4);
+6396   ins_encode( enc_std(src, mem) );
+6397   ins_pipe(pipe_class_memory);
+6398 %}
+6399 
+6400 // Store Compressed Oop
+6401 instruct storeN(memory dst, iRegN_P2N src) %{
+6402   match(Set dst (StoreN dst src));
+6403   ins_cost(MEMORY_REF_COST);
+6404 
+6405   format %{ "STW     $src, $dst \t// compressed oop" %}
+
+</pre><hr></hr><pre>
+6486   expand %{
+6487     immL baseImm %{ 0 /* TODO: PPC port (jlong)CMSCollectorCardTableModRefBSExt::requires_release_address() */ %}
+6488     iRegLdst releaseFieldAddress;
+6489     flagsReg crx;
+6490     loadConL_Ex(releaseFieldAddress, baseImm);
+6491     storeCM_CMS(mem, releaseFieldAddress, crx);
+6492   %}
+6493 %}
+6494 
+6495 instruct storeCM_G1(memory mem, immI_0 zero) %{
+6496   match(Set mem (StoreCM mem zero));
+6497   predicate(UseG1GC);
+6498   ins_cost(MEMORY_REF_COST);
+6499 
+6500   ins_cannot_rematerialize(true);
+6501 
+6502   format %{ "STB     #0, $mem \t// CMS card-mark byte store (G1)" %}
+6503   size(8);
+6504   ins_encode %{
+6505     // TODO: PPC port $archOpcode(ppc64Opcode_compound);
+
+6506     //__ release(); // G1: oops are allowed to get visible after dirty marking
+6507     guarantee($mem$$base$$Register != R1_SP, "use frame_slots_bias");
+<span class="changed">6508     __ stb(R30_zero, $mem$$disp, $mem$$base$$Register);</span>
+6509   %}
+6510   ins_pipe(pipe_class_memory);
+6511 %}
+6512 
+6513 // Convert oop pointer into compressed form.
+6514 
+6515 // Nodes for postalloc expand.
+6516 
+6517 // Shift node for expand.
+6518 instruct encodeP_shift(iRegNdst dst, iRegNsrc src) %{
+6519   // The match rule is needed to make it a 'MachTypeNode'!
+6520   match(Set dst (EncodeP src));
+6521   predicate(false);
+6522 
+6523   format %{ "SRDI    $dst, $src, 3 \t// encode" %}
+6524   size(4);
+6525   ins_encode %{
+6526     // TODO: PPC port $archOpcode(ppc64Opcode_rldicl);
+6527     __ srdi($dst$$Register, $src$$Register, Universe::narrow_oop_shift() &amp; 0x3f);
+6528   %}
+
+</pre><hr></hr><pre>
+11333     // TODO: PPC port $archOpcode(ppc64Opcode_fcmpu);
+11334     __ fcmpu($crx$$CondRegister, $src1$$FloatRegister, $src2$$FloatRegister);
+11335   %}
+11336   ins_pipe(pipe_class_default);
+11337 %}
+11338 
+11339 instruct cmov_bns_less(flagsReg crx) %{
+11340   // no match-rule, false predicate
+11341   effect(DEF crx);
+11342   predicate(false);
+11343 
+11344   ins_variable_size_depending_on_alignment(true);
+11345 
+11346   format %{ "cmov    $crx" %}
+11347   // Worst case is branch + move + stop, no stop without scheduler.
+11348   size(false /* TODO: PPC PORT(InsertEndGroupPPC64 &amp;&amp; Compile::current()-&gt;do_hb_scheduling())*/ ? 16 : 12);
+11349   ins_encode %{
+11350     // TODO: PPC port $archOpcode(ppc64Opcode_cmovecr);
+11351     Label done;
+11352     __ bns($crx$$CondRegister, done);          // not unordered -&gt; keep crx
+<span class="changed">11353     __ cmpwi($crx$$CondRegister, R30_zero, 1); // unordered -&gt; set crx to 'less'</span>
+
+11354     // TODO PPC port __ endgroup_if_needed(_size == 16);
+11355     __ bind(done);
+11356   %}
+11357   ins_pipe(pipe_class_default);
+11358 %}
+11359 
+11360 // Compare floating, generate condition code.
+11361 instruct cmpF_reg_reg_Ex(flagsReg crx, regF src1, regF src2) %{
+11362   // FIXME: should we match 'If cmp (CmpF src1 src2))' ??
+11363   //
+11364   // The following code sequence occurs a lot in mpegaudio:
+11365   //
+11366   // block BXX:
+11367   // 0: instruct cmpFUnordered_reg_reg (cmpF_reg_reg-0):
+11368   //    cmpFUrd CCR6, F11, F9
+11369   // 4: instruct cmov_bns_less (cmpF_reg_reg-1):
+11370   //    cmov CCR6
+11371   // 8: instruct branchConSched:
+11372   //    B_FARle CCR6, B56  P=0.500000 C=-1.000000
+11373   match(Set crx (CmpF src1 src2));
+
+</pre><hr></hr><pre>
+12784   ins_encode %{
+12785     // TODO: PPC port $archOpcode(ppc64Opcode_addi);
+12786     __ li($dst$$Register, 0x0);
+12787   %}
+12788   ins_pipe(pipe_class_default);
+12789 %}
+12790 
+12791 
+12792 //----------Overflow Math Instructions-----------------------------------------
+12793 
+12794 // Note that we have to make sure that XER.SO is reset before using overflow instructions.
+12795 // Simple Overflow operations can be matched by very few instructions (e.g. addExact: xor, and_, bc).
+12796 // Seems like only Long intrinsincs have an advantage. (The only expensive one is OverflowMulL.)
+12797 
+12798 instruct overflowAddL_reg_reg(flagsRegCR0 cr0, iRegLsrc op1, iRegLsrc op2) %{
+12799   match(Set cr0 (OverflowAddL op1 op2));
+12800 
+12801   format %{ "add_    $op1, $op2\t# overflow check long" %}
+12802   ins_encode %{
+12803     // TODO: PPC port $archOpcode(ppc64Opcode_compound);
+<span class="changed">12804     __ mtxer(R30_zero); // clear XER.SO</span>
+<span class="changed">12805     __ addo_(R30_zero, $op1$$Register, $op2$$Register);</span>
+
+12806   %}
+12807   ins_pipe(pipe_class_default);
+12808 %}
+12809 
+12810 instruct overflowSubL_reg_reg(flagsRegCR0 cr0, iRegLsrc op1, iRegLsrc op2) %{
+12811   match(Set cr0 (OverflowSubL op1 op2));
+12812 
+12813   format %{ "subfo_  R0, $op2, $op1\t# overflow check long" %}
+12814   ins_encode %{
+12815     // TODO: PPC port $archOpcode(ppc64Opcode_compound);
+<span class="changed">12816     __ mtxer(R30_zero); // clear XER.SO</span>
+<span class="changed">12817     __ subfo_(R30_zero, $op2$$Register, $op1$$Register);</span>
+
+12818   %}
+12819   ins_pipe(pipe_class_default);
+12820 %}
+12821 
+12822 instruct overflowNegL_reg(flagsRegCR0 cr0, immL_0 zero, iRegLsrc op2) %{
+12823   match(Set cr0 (OverflowSubL zero op2));
+12824 
+12825   format %{ "nego_   R0, $op2\t# overflow check long" %}
+12826   ins_encode %{
+12827     // TODO: PPC port $archOpcode(ppc64Opcode_compound);
+<span class="changed">12828     __ mtxer(R30_zero); // clear XER.SO</span>
+<span class="changed">12829     __ nego_(R30_zero, $op2$$Register);</span>
+
+12830   %}
+12831   ins_pipe(pipe_class_default);
+12832 %}
+12833 
+12834 instruct overflowMulL_reg_reg(flagsRegCR0 cr0, iRegLsrc op1, iRegLsrc op2) %{
+12835   match(Set cr0 (OverflowMulL op1 op2));
+12836 
+12837   format %{ "mulldo_ R0, $op1, $op2\t# overflow check long" %}
+12838   ins_encode %{
+12839     // TODO: PPC port $archOpcode(ppc64Opcode_compound);
+<span class="changed">12840     __ mtxer(R30_zero); // clear XER.SO</span>
+<span class="changed">12841     __ mulldo_(R30_zero, $op1$$Register, $op2$$Register);</span>
+
+12842   %}
+12843   ins_pipe(pipe_class_default);
+12844 %}
+12845 
+12846 
+12847 // ============================================================================
+12848 // Safepoint Instruction
+12849 
+12850 instruct safePoint_poll(iRegPdst poll) %{
+12851   match(SafePoint poll);
+12852   predicate(LoadPollAddressFromThread);
+12853 
+12854   // It caused problems to add the effect that r0 is killed, but this
+12855   // effect no longer needs to be mentioned, since r0 is not contained
+12856   // in a reg_class.
+12857 
+12858   format %{ "LD      R0, #0, $poll \t// Safepoint poll for GC" %}
+12859   size(4);
+12860   ins_encode( enc_poll(0x0, poll) );
+12861   ins_pipe(pipe_class_default);
+
+</pre><hr></hr>
+</pre></td>
+</tr></table>
+<center><a href='../../../../src/cpu/ppc/vm/c1_FrameMap_ppc.hpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/register_ppc.hpp.sdiff.html' target='_top'>next &gt</a></center>
+</body></html>

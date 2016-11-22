@@ -1,0 +1,323 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>hotspot Udiff src/cpu/ppc/vm/ppc.ad</title>
+
+<style type="text/css" media="screen">
+span.new {
+    color: blue;
+    font-weight: normal;
+}
+</style>
+
+</head>
+<body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/c1_Runtime1_ppc.cpp.udiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/register_ppc.hpp.udiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/ppc.ad</h2>
+        <a class="print" href="javascript:print()">Print this page</a>
+<pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-12270">12270</a> : Reserve R30 to a cleared content register on C1 and C2 code
+
+Several times a 0 is loaded to a register as a temporary value. This can be
+improved by caching a 0 into a register.
+
+I didn't notice a performance drop since only applying this patch showed no
+drop of performance, hence there are more registers available than normally
+needed and this caching technique can be applied.
+
+Despite setting R30_zero as a dedicated register and initialized with 0 for the
+C1 and C2 code, new rules for storing 0 related to stb,sth,stw,std were added.</pre>
+        <pre>
+</pre><hr /><pre>
+<span class="newmarker">@@ -298,11 +298,10 @@</span>
+   R25, R25_H,
+   R26, R26_H,
+   R27, R27_H,
+   R28, R28_H,
+   R29, R29_H,
+<span class="removed">-  R30, R30_H,</span>
+   R31, R31_H,
+ 
+   // scratch/special registers
+   R11, R11_H,
+   R12, R12_H,
+</pre><hr /><pre>
+<span class="newmarker">@@ -316,10 +315,11 @@</span>
+   R5,  R5_H,
+   R4,  R4_H,
+   R3,  R3_H,
+ 
+   // special registers, not available for allocation
+<span class="new">+  R30, R30_H,     // R30_zero</span>
+   R16, R16_H,     // R16_thread
+   R13, R13_H,     // system thread id
+   R2,  R2_H,      // may be used for TOC
+   R1,  R1_H,      // SP
+   R0,  R0_H       // R0 (scratch)
+</pre><hr /><pre>
+<span class="newmarker">@@ -446,11 +446,11 @@</span>
+   R25,
+   R26,
+   R27,
+   R28,
+ /*R29,*/             // global TOC
+<span class="removed">-  R30,</span>
+<span class="new">+/*R30,*/             // R30_zero</span>
+   R31
+ );
+ 
+ // 32 bit registers that can only be read i.e. these registers can
+ // only be src of all instructions.
+</pre><hr /><pre>
+<span class="newmarker">@@ -483,11 +483,11 @@</span>
+   R25,
+   R26,
+   R27,
+   R28,
+ /*R29,*/
+<span class="removed">-  R30,</span>
+<span class="new">+/*R30,*/            // R30_zero</span>
+   R31
+ );
+ 
+ reg_class rscratch1_bits32_reg(R11);
+ reg_class rscratch2_bits32_reg(R12);
+</pre><hr /><pre>
+<span class="newmarker">@@ -543,11 +543,11 @@</span>
+   R25_H, R25,
+   R26_H, R26,
+   R27_H, R27,
+   R28_H, R28,
+ /*R29_H, R29,*/
+<span class="removed">-  R30_H, R30,</span>
+<span class="new">+/*R30_H, R30,*/  // R30_zero</span>
+   R31_H, R31
+ );
+ 
+ // 64 bit registers used excluding r2, r11 and r12
+ // Used to hold the TOC to avoid collisions with expanded LeafCall which uses
+</pre><hr /><pre>
+<span class="newmarker">@@ -581,11 +581,11 @@</span>
+   R25_H, R25,
+   R26_H, R26,
+   R27_H, R27,
+   R28_H, R28,
+ /*R29_H, R29,*/
+<span class="removed">-  R30_H, R30,</span>
+<span class="new">+/*R30_H, R30,*/  // R30_zero</span>
+   R31_H, R31
+ );
+ 
+ // Used to hold the TOC to avoid collisions with expanded DynamicCall
+ // which uses r19 as inline cache internally and expanded LeafCall which uses
+</pre><hr /><pre>
+<span class="newmarker">@@ -619,11 +619,11 @@</span>
+   R25_H, R25,
+   R26_H, R26,
+   R27_H, R27,
+   R28_H, R28,
+ /*R29_H, R29,*/
+<span class="removed">-  R30_H, R30,</span>
+<span class="new">+/*R30_H, R30,*/  // R30_zero</span>
+   R31_H, R31
+ );
+ 
+ // 64 bit registers that can only be read i.e. these registers can
+ // only be src of all instructions.
+</pre><hr /><pre>
+<span class="newmarker">@@ -656,11 +656,11 @@</span>
+   R25_H, R25,
+   R26_H, R26,
+   R27_H, R27,
+   R28_H, R28,
+ /*R29_H, R29,*/ // TODO: let allocator handle TOC!!
+<span class="removed">-  R30_H, R30,</span>
+<span class="new">+/*R30_H, R30,*/  // R30_zero</span>
+   R31_H, R31
+ );
+ 
+ 
+ // ----------------------------
+</pre><hr /><pre>
+<span class="newmarker">@@ -6278,10 +6278,24 @@</span>
+     __ stb($src$$Register, Idisp, $mem$$base$$Register);
+   %}
+   ins_pipe(pipe_class_memory);
+ %}
+ 
+<span class="new">+instruct storeB_0(memory mem, immI_0 zero) %{</span>
+<span class="new">+  match(Set mem (StoreB mem zero));</span>
+<span class="new">+  ins_cost(MEMORY_REF_COST);</span>
+<span class="new">+</span>
+<span class="new">+  format %{ "STB     0, $mem \t// store 0 on a byte" %}</span>
+<span class="new">+  size(4);</span>
+<span class="new">+  ins_encode %{</span>
+<span class="new">+    // TODO: PPC port $archOpcode(ppc64Opcode_stb);</span>
+<span class="new">+    int Idisp = $mem$$disp + frame_slots_bias($mem$$base, ra_);</span>
+<span class="new">+    __ stb(R30_zero, Idisp, $mem$$base$$Register);</span>
+<span class="new">+  %}</span>
+<span class="new">+  ins_pipe(pipe_class_memory);</span>
+<span class="new">+%}</span>
+<span class="new">+</span>
+ // Store Char/Short
+ instruct storeC(memory mem, iRegIsrc src) %{
+   match(Set mem (StoreC mem src));
+   ins_cost(MEMORY_REF_COST);
+ 
+</pre><hr /><pre>
+<span class="newmarker">@@ -6293,10 +6307,24 @@</span>
+     __ sth($src$$Register, Idisp, $mem$$base$$Register);
+   %}
+   ins_pipe(pipe_class_memory);
+ %}
+ 
+<span class="new">+instruct storeC_0(memory mem, immI_0 zero) %{</span>
+<span class="new">+  match(Set mem (StoreC mem zero));</span>
+<span class="new">+  ins_cost(MEMORY_REF_COST);</span>
+<span class="new">+</span>
+<span class="new">+  format %{ "STH     0, $mem \t// store 0 on a short" %}</span>
+<span class="new">+  size(4);</span>
+<span class="new">+  ins_encode %{</span>
+<span class="new">+    // TODO: PPC port $archOpcode(ppc64Opcode_sth);</span>
+<span class="new">+    int Idisp = $mem$$disp + frame_slots_bias($mem$$base, ra_);</span>
+<span class="new">+    __ sth(R30_zero, Idisp, $mem$$base$$Register);</span>
+<span class="new">+  %}</span>
+<span class="new">+  ins_pipe(pipe_class_memory);</span>
+<span class="new">+%}</span>
+<span class="new">+</span>
+ // Store Integer
+ instruct storeI(memory mem, iRegIsrc src) %{
+   match(Set mem (StoreI mem src));
+   ins_cost(MEMORY_REF_COST);
+ 
+</pre><hr /><pre>
+<span class="newmarker">@@ -6304,10 +6332,23 @@</span>
+   size(4);
+   ins_encode( enc_stw(src, mem) );
+   ins_pipe(pipe_class_memory);
+ %}
+ 
+<span class="new">+instruct storeI_0(memory mem, immI_0 zero) %{</span>
+<span class="new">+  match(Set mem (StoreI mem zero));</span>
+<span class="new">+  ins_cost(MEMORY_REF_COST);</span>
+<span class="new">+</span>
+<span class="new">+  format %{ "STW     0, $mem \t// store 0 on a word" %}</span>
+<span class="new">+  size(4);</span>
+<span class="new">+  ins_encode %{</span>
+<span class="new">+    int Idisp = $mem$$disp + frame_slots_bias($mem$$base, ra_);</span>
+<span class="new">+    __ stw(R30_zero, Idisp, $mem$$base$$Register);</span>
+<span class="new">+  %}</span>
+<span class="new">+  ins_pipe(pipe_class_memory);</span>
+<span class="new">+%}</span>
+<span class="new">+</span>
+ // ConvL2I + StoreI.
+ instruct storeI_convL2I(memory mem, iRegLsrc src) %{
+   match(Set mem (StoreI mem (ConvL2I src)));
+   ins_cost(MEMORY_REF_COST);
+ 
+</pre><hr /><pre>
+<span class="newmarker">@@ -6326,10 +6367,25 @@</span>
+   size(4);
+   ins_encode( enc_std(src, mem) );
+   ins_pipe(pipe_class_memory);
+ %}
+ 
+<span class="new">+instruct storeL_0(memoryAlg4 mem, immL_0 zero) %{</span>
+<span class="new">+  match(Set mem (StoreL mem zero));</span>
+<span class="new">+  ins_cost(MEMORY_REF_COST);</span>
+<span class="new">+</span>
+<span class="new">+  format %{ "STD     0, $mem \t// store 0 on a long" %}</span>
+<span class="new">+  size(4);</span>
+<span class="new">+  ins_encode %{</span>
+<span class="new">+    int Idisp = $mem$$disp + frame_slots_bias($mem$$base, ra_);</span>
+<span class="new">+    // Operand 'ds' requires 4-alignment.</span>
+<span class="new">+    assert((Idisp &amp; 0x3) == 0, "unaligned offset");</span>
+<span class="new">+    __ std(R30_zero, Idisp, $mem$$base$$Register);</span>
+<span class="new">+  %}</span>
+<span class="new">+  ins_pipe(pipe_class_memory);</span>
+<span class="new">+%}</span>
+<span class="new">+</span>
+ // Store super word nodes.
+ 
+ // Store Aligned Packed Byte long register to memory
+ instruct storeA8B(memoryAlg4 mem, iRegLsrc src) %{
+   predicate(n-&gt;as_StoreVector()-&gt;memory_size() == 8);
+</pre>
+<center><a href='../../../../src/cpu/ppc/vm/c1_Runtime1_ppc.cpp.udiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/register_ppc.hpp.udiff.html' target='_top'>next &gt</a></center>
+</body></html>
+

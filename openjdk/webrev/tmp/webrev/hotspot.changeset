@@ -1,0 +1,312 @@
+# HG changeset patch
+# User Gustavo Serra Scalet <gustavo.scalet@eldorado.org.br>
+# Date 1478721947 7200
+#      Wed Nov 09 18:05:47 2016 -0200
+# Node ID 67476cf4208b320530e99771636ec7136639ac17
+# Parent  031e87605d2163845140b092e84053d373d0c10a
+Reserve R30 to a cleared content register on C1 and C2 code
+
+Several times a 0 is loaded to a register as a temporary value. This can be
+improved by caching a 0 into a register.
+
+I didn't notice a performance drop since only applying this patch showed no
+drop of performance, hence there are more registers available than normally
+needed and this caching technique can be applied.
+
+Despite setting R30_zero as a dedicated register and initialized with 0 for the
+C1 and C2 code, new rules for storing 0 related to stb,sth,stw,std were added.
+
+diff --git a/src/cpu/ppc/vm/c1_Defs_ppc.hpp b/src/cpu/ppc/vm/c1_Defs_ppc.hpp
+--- a/src/cpu/ppc/vm/c1_Defs_ppc.hpp
++++ b/src/cpu/ppc/vm/c1_Defs_ppc.hpp
+@@ -47,8 +47,8 @@
+ // registers
+ enum {
+   pd_nof_cpu_regs_frame_map = 32,              // Number of registers used during code emission.
+-  pd_nof_caller_save_cpu_regs_frame_map = 27,  // Number of cpu registers killed by calls. (At least R3_ARG1 ... R10_ARG8, but using all like C2.)
+-  pd_nof_cpu_regs_reg_alloc = 27,              // Number of registers that are visible to register allocator.
++  pd_nof_caller_save_cpu_regs_frame_map = 26,  // Number of cpu registers killed by calls. (At least R3_ARG1 ... R10_ARG8, but using all like C2.)
++  pd_nof_cpu_regs_reg_alloc = 26,              // Number of registers that are visible to register allocator.
+   pd_nof_cpu_regs_linearscan = 32,             // Number of registers visible linear scan.
+   pd_first_callee_saved_reg = pd_nof_caller_save_cpu_regs_frame_map,
+   pd_last_callee_saved_reg = pd_nof_cpu_regs_reg_alloc - 1,
+diff --git a/src/cpu/ppc/vm/c1_FrameMap_ppc.cpp b/src/cpu/ppc/vm/c1_FrameMap_ppc.cpp
+--- a/src/cpu/ppc/vm/c1_FrameMap_ppc.cpp
++++ b/src/cpu/ppc/vm/c1_FrameMap_ppc.cpp
+@@ -137,7 +137,7 @@
+ LIR_Opr FrameMap::R27_oop_opr;
+ LIR_Opr FrameMap::R28_oop_opr;
+ //LIR_Opr FrameMap::R29_oop_opr;
+-LIR_Opr FrameMap::R30_oop_opr;
++//LIR_Opr FrameMap::R30_oop_opr;
+ LIR_Opr FrameMap::R31_oop_opr;
+ 
+ LIR_Opr  FrameMap::R0_metadata_opr;
+@@ -170,7 +170,7 @@
+ LIR_Opr FrameMap::R27_metadata_opr;
+ LIR_Opr FrameMap::R28_metadata_opr;
+ //LIR_Opr FrameMap::R29_metadata_opr;
+-LIR_Opr FrameMap::R30_metadata_opr;
++//LIR_Opr FrameMap::R30_metadata_opr;
+ LIR_Opr FrameMap::R31_metadata_opr;
+ 
+ LIR_Opr FrameMap::SP_opr;
+@@ -301,7 +301,7 @@
+   R27_oop_opr = as_oop_opr(R27);
+   R28_oop_opr = as_oop_opr(R28);
+   //R29_oop_opr = as_oop_opr(R29);
+-  R30_oop_opr = as_oop_opr(R30);
++  //R30_oop_opr = as_oop_opr(R30);
+   R31_oop_opr = as_oop_opr(R31);
+ 
+   R0_metadata_opr  = as_metadata_opr(R0);
+@@ -334,7 +334,7 @@
+   R27_metadata_opr = as_metadata_opr(R27);
+   R28_metadata_opr = as_metadata_opr(R28);
+   //R29_metadata_opr = as_metadata_opr(R29);
+-  R30_metadata_opr = as_metadata_opr(R30);
++  //R30_metadata_opr = as_metadata_opr(R30);
+   R31_metadata_opr = as_metadata_opr(R31);
+ 
+   SP_opr = as_pointer_opr(R1_SP);
+diff --git a/src/cpu/ppc/vm/c1_FrameMap_ppc.hpp b/src/cpu/ppc/vm/c1_FrameMap_ppc.hpp
+--- a/src/cpu/ppc/vm/c1_FrameMap_ppc.hpp
++++ b/src/cpu/ppc/vm/c1_FrameMap_ppc.hpp
+@@ -100,7 +100,7 @@
+   static LIR_Opr R28_oop_opr;
+   static LIR_Opr R29_oop_opr;
+   //R29: TOC register. Not an oop.
+-  static LIR_Opr R30_oop_opr;
++  //R30: R30_zero. Not an oop.
+   static LIR_Opr R31_oop_opr;
+ 
+   static LIR_Opr  R0_metadata_opr;
+@@ -133,7 +133,7 @@
+   static LIR_Opr R27_metadata_opr;
+   static LIR_Opr R28_metadata_opr;
+   //R29: TOC register. Not metadata.
+-  static LIR_Opr R30_metadata_opr;
++  //R30: R30_zero. Not metadata.
+   static LIR_Opr R31_metadata_opr;
+ 
+   static LIR_Opr SP_opr;
+@@ -197,6 +197,7 @@
+   // R13: system thread id
+   // R16: java thread
+   // R29: global TOC
+-  static bool reg_needs_save(Register r) { return r != R0 && r != R1 && r != R13 && r != R16 && r != R29; }
++  // R30: R30_zero
++  static bool reg_needs_save(Register r) { return r != R0 && r != R1 && r != R13 && r != R16 && r != R29 && r != R30; }
+ 
+ #endif // CPU_PPC_VM_C1_FRAMEMAP_PPC_HPP
+diff --git a/src/cpu/ppc/vm/c1_Runtime1_ppc.cpp b/src/cpu/ppc/vm/c1_Runtime1_ppc.cpp
+--- a/src/cpu/ppc/vm/c1_Runtime1_ppc.cpp
++++ b/src/cpu/ppc/vm/c1_Runtime1_ppc.cpp
+@@ -581,6 +581,7 @@
+         __ mtctr(R3_RET);
+         __ ld(Rexception_pc, _abi(lr), Rcaller_sp); // return pc
+         __ mr(R1_SP, Rcaller_sp); // Pop both frames at once.
++        __ li(R30_zero, 0); // redefine R30 after Rcaller_sp usage
+         __ mr(Rexception, Rexception_save); // restore
+         __ mtlr(Rexception_pc);
+         __ bctr();
+diff --git a/src/cpu/ppc/vm/ppc.ad b/src/cpu/ppc/vm/ppc.ad
+--- a/src/cpu/ppc/vm/ppc.ad
++++ b/src/cpu/ppc/vm/ppc.ad
+@@ -300,7 +300,6 @@
+   R27, R27_H,
+   R28, R28_H,
+   R29, R29_H,
+-  R30, R30_H,
+   R31, R31_H,
+ 
+   // scratch/special registers
+@@ -318,6 +317,7 @@
+   R3,  R3_H,
+ 
+   // special registers, not available for allocation
++  R30, R30_H,     // R30_zero
+   R16, R16_H,     // R16_thread
+   R13, R13_H,     // system thread id
+   R2,  R2_H,      // may be used for TOC
+@@ -448,7 +448,7 @@
+   R27,
+   R28,
+ /*R29,*/             // global TOC
+-  R30,
++/*R30,*/             // R30_zero
+   R31
+ );
+ 
+@@ -485,7 +485,7 @@
+   R27,
+   R28,
+ /*R29,*/
+-  R30,
++/*R30,*/            // R30_zero
+   R31
+ );
+ 
+@@ -545,7 +545,7 @@
+   R27_H, R27,
+   R28_H, R28,
+ /*R29_H, R29,*/
+-  R30_H, R30,
++/*R30_H, R30,*/  // R30_zero
+   R31_H, R31
+ );
+ 
+@@ -583,7 +583,7 @@
+   R27_H, R27,
+   R28_H, R28,
+ /*R29_H, R29,*/
+-  R30_H, R30,
++/*R30_H, R30,*/  // R30_zero
+   R31_H, R31
+ );
+ 
+@@ -621,7 +621,7 @@
+   R27_H, R27,
+   R28_H, R28,
+ /*R29_H, R29,*/
+-  R30_H, R30,
++/*R30_H, R30,*/  // R30_zero
+   R31_H, R31
+ );
+ 
+@@ -658,7 +658,7 @@
+   R27_H, R27,
+   R28_H, R28,
+ /*R29_H, R29,*/ // TODO: let allocator handle TOC!!
+-  R30_H, R30,
++/*R30_H, R30,*/  // R30_zero
+   R31_H, R31
+ );
+ 
+@@ -6280,6 +6280,20 @@
+   ins_pipe(pipe_class_memory);
+ %}
+ 
++instruct storeB_0(memory mem, immI_0 zero) %{
++  match(Set mem (StoreB mem zero));
++  ins_cost(MEMORY_REF_COST);
++
++  format %{ "STB     0, $mem \t// store 0 on a byte" %}
++  size(4);
++  ins_encode %{
++    // TODO: PPC port $archOpcode(ppc64Opcode_stb);
++    int Idisp = $mem$$disp + frame_slots_bias($mem$$base, ra_);
++    __ stb(R30_zero, Idisp, $mem$$base$$Register);
++  %}
++  ins_pipe(pipe_class_memory);
++%}
++
+ // Store Char/Short
+ instruct storeC(memory mem, iRegIsrc src) %{
+   match(Set mem (StoreC mem src));
+@@ -6295,6 +6309,20 @@
+   ins_pipe(pipe_class_memory);
+ %}
+ 
++instruct storeC_0(memory mem, immI_0 zero) %{
++  match(Set mem (StoreC mem zero));
++  ins_cost(MEMORY_REF_COST);
++
++  format %{ "STH     0, $mem \t// store 0 on a short" %}
++  size(4);
++  ins_encode %{
++    // TODO: PPC port $archOpcode(ppc64Opcode_sth);
++    int Idisp = $mem$$disp + frame_slots_bias($mem$$base, ra_);
++    __ sth(R30_zero, Idisp, $mem$$base$$Register);
++  %}
++  ins_pipe(pipe_class_memory);
++%}
++
+ // Store Integer
+ instruct storeI(memory mem, iRegIsrc src) %{
+   match(Set mem (StoreI mem src));
+@@ -6306,6 +6334,19 @@
+   ins_pipe(pipe_class_memory);
+ %}
+ 
++instruct storeI_0(memory mem, immI_0 zero) %{
++  match(Set mem (StoreI mem zero));
++  ins_cost(MEMORY_REF_COST);
++
++  format %{ "STW     0, $mem \t// store 0 on a word" %}
++  size(4);
++  ins_encode %{
++    int Idisp = $mem$$disp + frame_slots_bias($mem$$base, ra_);
++    __ stw(R30_zero, Idisp, $mem$$base$$Register);
++  %}
++  ins_pipe(pipe_class_memory);
++%}
++
+ // ConvL2I + StoreI.
+ instruct storeI_convL2I(memory mem, iRegLsrc src) %{
+   match(Set mem (StoreI mem (ConvL2I src)));
+@@ -6328,6 +6369,21 @@
+   ins_pipe(pipe_class_memory);
+ %}
+ 
++instruct storeL_0(memoryAlg4 mem, immL_0 zero) %{
++  match(Set mem (StoreL mem zero));
++  ins_cost(MEMORY_REF_COST);
++
++  format %{ "STD     0, $mem \t// store 0 on a long" %}
++  size(4);
++  ins_encode %{
++    int Idisp = $mem$$disp + frame_slots_bias($mem$$base, ra_);
++    // Operand 'ds' requires 4-alignment.
++    assert((Idisp & 0x3) == 0, "unaligned offset");
++    __ std(R30_zero, Idisp, $mem$$base$$Register);
++  %}
++  ins_pipe(pipe_class_memory);
++%}
++
+ // Store super word nodes.
+ 
+ // Store Aligned Packed Byte long register to memory
+diff --git a/src/cpu/ppc/vm/register_ppc.hpp b/src/cpu/ppc/vm/register_ppc.hpp
+--- a/src/cpu/ppc/vm/register_ppc.hpp
++++ b/src/cpu/ppc/vm/register_ppc.hpp
+@@ -714,6 +714,7 @@
+ REGISTER_DECLARATION(Register, R26_monitor,           R26);
+ REGISTER_DECLARATION(Register, R27_constPoolCache,    R27);
+ REGISTER_DECLARATION(Register, R28_mdx,               R28);
++REGISTER_DECLARATION(Register, R30_zero,              R30);
+ 
+ REGISTER_DECLARATION(Register, R19_inline_cache_reg, R19);
+ REGISTER_DECLARATION(Register, R29_TOC, R29);
+@@ -736,6 +737,7 @@
+ #define R26_monitor           AS_REGISTER(Register, R26)
+ #define R27_constPoolCache    AS_REGISTER(Register, R27)
+ #define R28_mdx               AS_REGISTER(Register, R28)
++#define R30_zero              AS_REGISTER(Register, R30)
+ 
+ #define R19_inline_cache_reg AS_REGISTER(Register, R19)
+ #define R29_TOC AS_REGISTER(Register, R29)
+diff --git a/src/cpu/ppc/vm/stubGenerator_ppc.cpp b/src/cpu/ppc/vm/stubGenerator_ppc.cpp
+--- a/src/cpu/ppc/vm/stubGenerator_ppc.cpp
++++ b/src/cpu/ppc/vm/stubGenerator_ppc.cpp
+@@ -264,6 +264,9 @@
+       // Pass initial_caller_sp to framemanager.
+       __ mr(R21_tmp1, R1_SP);
+ 
++      // Zero the register that caches zero (optimization)
++      __ li(R30_zero, 0);
++
+       // Do a light-weight C-call here, r_new_arg_entry holds the address
+       // of the interpreter entry point (frame manager or native entry)
+       // and save runtime-value of LR in return_address.
+diff --git a/src/cpu/ppc/vm/templateInterpreterGenerator_ppc.cpp b/src/cpu/ppc/vm/templateInterpreterGenerator_ppc.cpp
+--- a/src/cpu/ppc/vm/templateInterpreterGenerator_ppc.cpp
++++ b/src/cpu/ppc/vm/templateInterpreterGenerator_ppc.cpp
+@@ -1053,6 +1053,7 @@
+ 
+   // Set up interpreter state registers.
+ 
++  __ li(R30_zero, 0);
+   __ add(R18_locals, R15_esp, Rsize_of_parameters);
+   __ ld(R27_constPoolCache, in_bytes(ConstMethod::constants_offset()), Rconst_method);
+   __ ld(R27_constPoolCache, ConstantPool::cache_offset_in_bytes(), R27_constPoolCache);

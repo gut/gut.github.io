@@ -1,0 +1,193 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>hotspot Sdiff src/cpu/ppc/vm </title>
+</head><body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/stubGenerator_ppc.cpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> next &gt</center>
+<h2>src/cpu/ppc/vm/templateInterpreterGenerator_ppc.cpp</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-12310">12310</a> : Reserve R30 to a cleared content register on C1 and C2 code
+
+Several times a 0 is loaded to a register as a temporary value. This can be
+improved by caching a 0 into a register.
+
+I didn't notice a performance drop since only applying this patch showed no
+drop of performance, hence there are more registers available than normally
+needed and this caching technique can be applied.
+
+Despite setting R30_zero as a dedicated register and initialized with 0 for the
+C1 and C2 code, new rules for storing 0 related to stb,sth,stw,std were added.</pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+1036 
+1037   // Cut back area between esp and max_stack.
+1038   __ addi(parent_frame_resize, parent_frame_resize, frame::abi_minframe_size - Interpreter::stackElementSize);
+1039 
+1040   __ round_to(top_frame_size, frame::alignment_in_bytes);
+1041   __ round_to(parent_frame_resize, frame::alignment_in_bytes);
+1042   // parent_frame_resize = (locals-parameters) - (ESP-SP-ABI48) Rounded to frame alignment size.
+1043   // Enlarge by locals-parameters (not in case of native_call), shrink by ESP-SP-ABI48.
+1044 
+1045   if (!native_call) {
+1046     // Stack overflow check.
+1047     // Native calls don't need the stack size check since they have no
+1048     // expression stack and the arguments are already on the stack and
+1049     // we only add a handful of words to the stack.
+1050     __ add(R11_scratch1, parent_frame_resize, top_frame_size);
+1051     generate_stack_overflow_check(R11_scratch1, R12_scratch2);
+1052   }
+1053 
+1054   // Set up interpreter state registers.
+1055 
+
+1056   __ add(R18_locals, R15_esp, Rsize_of_parameters);
+1057   __ ld(R27_constPoolCache, in_bytes(ConstMethod::constants_offset()), Rconst_method);
+1058   __ ld(R27_constPoolCache, ConstantPool::cache_offset_in_bytes(), R27_constPoolCache);
+1059 
+1060   // Set method data pointer.
+1061   if (ProfileInterpreter) {
+1062     Label zero_continue;
+1063     __ ld(R28_mdx, method_(method_data));
+1064     __ cmpdi(CCR0, R28_mdx, 0);
+1065     __ beq(CCR0, zero_continue);
+1066     __ addi(R28_mdx, R28_mdx, in_bytes(MethodData::data_offset()));
+1067     __ bind(zero_continue);
+1068   }
+1069 
+1070   if (native_call) {
+1071     __ li(R14_bcp, 0); // Must initialize.
+1072   } else {
+1073     __ add(R14_bcp, in_bytes(ConstMethod::codes_offset()), Rconst_method);
+1074   }
+1075 
+
+</pre><hr></hr>
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+1036 
+1037   // Cut back area between esp and max_stack.
+1038   __ addi(parent_frame_resize, parent_frame_resize, frame::abi_minframe_size - Interpreter::stackElementSize);
+1039 
+1040   __ round_to(top_frame_size, frame::alignment_in_bytes);
+1041   __ round_to(parent_frame_resize, frame::alignment_in_bytes);
+1042   // parent_frame_resize = (locals-parameters) - (ESP-SP-ABI48) Rounded to frame alignment size.
+1043   // Enlarge by locals-parameters (not in case of native_call), shrink by ESP-SP-ABI48.
+1044 
+1045   if (!native_call) {
+1046     // Stack overflow check.
+1047     // Native calls don't need the stack size check since they have no
+1048     // expression stack and the arguments are already on the stack and
+1049     // we only add a handful of words to the stack.
+1050     __ add(R11_scratch1, parent_frame_resize, top_frame_size);
+1051     generate_stack_overflow_check(R11_scratch1, R12_scratch2);
+1052   }
+1053 
+1054   // Set up interpreter state registers.
+1055 
+<span class="new">1056   __ li(R30_zero, 0);</span>
+1057   __ add(R18_locals, R15_esp, Rsize_of_parameters);
+1058   __ ld(R27_constPoolCache, in_bytes(ConstMethod::constants_offset()), Rconst_method);
+1059   __ ld(R27_constPoolCache, ConstantPool::cache_offset_in_bytes(), R27_constPoolCache);
+1060 
+1061   // Set method data pointer.
+1062   if (ProfileInterpreter) {
+1063     Label zero_continue;
+1064     __ ld(R28_mdx, method_(method_data));
+1065     __ cmpdi(CCR0, R28_mdx, 0);
+1066     __ beq(CCR0, zero_continue);
+1067     __ addi(R28_mdx, R28_mdx, in_bytes(MethodData::data_offset()));
+1068     __ bind(zero_continue);
+1069   }
+1070 
+1071   if (native_call) {
+1072     __ li(R14_bcp, 0); // Must initialize.
+1073   } else {
+1074     __ add(R14_bcp, in_bytes(ConstMethod::codes_offset()), Rconst_method);
+1075   }
+1076 
+
+</pre><hr></hr>
+</pre></td>
+</tr></table>
+<center><a href='../../../../src/cpu/ppc/vm/stubGenerator_ppc.cpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> next &gt</center>
+</body></html>

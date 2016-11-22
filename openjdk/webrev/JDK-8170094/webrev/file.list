@@ -1,0 +1,7 @@
+src/cpu/ppc/vm/c1_Defs_ppc.hpp
+src/cpu/ppc/vm/c1_FrameMap_ppc.cpp
+src/cpu/ppc/vm/c1_FrameMap_ppc.hpp
+src/cpu/ppc/vm/ppc.ad
+src/cpu/ppc/vm/register_ppc.hpp
+src/cpu/ppc/vm/stubGenerator_ppc.cpp
+src/cpu/ppc/vm/templateInterpreterGenerator_ppc.cpp
