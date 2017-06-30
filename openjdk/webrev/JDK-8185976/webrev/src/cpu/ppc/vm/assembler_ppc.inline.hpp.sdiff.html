@@ -1,0 +1,189 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk10-hotspot-hg Sdiff src/cpu/ppc/vm </title>
+</head><body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/assembler_ppc.hpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/macroAssembler_ppc.cpp.sdiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/assembler_ppc.inline.hpp</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13389">13389</a> : PPC: Implement MulAdd and SquareToLen intrinsics
+
+This implementation is based on the algorithm implemented in java. It
+yields a performance speedup of:
+JDK8 - 23%
+JDK9 - 5%
+JDK10 - 5%</pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+ 147 inline void Assembler::subfmeo_(Register d, Register a)             { emit_int32(SUBFME_OPCODE | rt(d) | ra(a) |         oe(1) | rc(1)); }
+ 148 inline void Assembler::addzeo(  Register d, Register a)             { emit_int32(ADDZE_OPCODE  | rt(d) | ra(a) |         oe(1) | rc(0)); }
+ 149 inline void Assembler::addzeo_( Register d, Register a)             { emit_int32(ADDZE_OPCODE  | rt(d) | ra(a) |         oe(1) | rc(1)); }
+ 150 inline void Assembler::subfzeo( Register d, Register a)             { emit_int32(SUBFZE_OPCODE | rt(d) | ra(a) |         oe(1) | rc(0)); }
+ 151 inline void Assembler::subfzeo_(Register d, Register a)             { emit_int32(SUBFZE_OPCODE | rt(d) | ra(a) |         oe(1) | rc(1)); }
+ 152 inline void Assembler::nego(    Register d, Register a)             { emit_int32(NEG_OPCODE    | rt(d) | ra(a) | oe(1) | rc(0)); }
+ 153 inline void Assembler::nego_(   Register d, Register a)             { emit_int32(NEG_OPCODE    | rt(d) | ra(a) | oe(1) | rc(1)); }
+ 154 inline void Assembler::mulldo(  Register d, Register a, Register b) { emit_int32(MULLD_OPCODE  | rt(d) | ra(a) | rb(b) | oe(1) | rc(0)); }
+ 155 inline void Assembler::mulldo_( Register d, Register a, Register b) { emit_int32(MULLD_OPCODE  | rt(d) | ra(a) | rb(b) | oe(1) | rc(1)); }
+ 156 inline void Assembler::mullwo(  Register d, Register a, Register b) { emit_int32(MULLW_OPCODE  | rt(d) | ra(a) | rb(b) | oe(1) | rc(0)); }
+ 157 inline void Assembler::mullwo_( Register d, Register a, Register b) { emit_int32(MULLW_OPCODE  | rt(d) | ra(a) | rb(b) | oe(1) | rc(1)); }
+ 158 inline void Assembler::divdo(   Register d, Register a, Register b) { emit_int32(DIVD_OPCODE   | rt(d) | ra(a) | rb(b) | oe(1) | rc(0)); }
+ 159 inline void Assembler::divdo_(  Register d, Register a, Register b) { emit_int32(DIVD_OPCODE   | rt(d) | ra(a) | rb(b) | oe(1) | rc(1)); }
+ 160 inline void Assembler::divwo(   Register d, Register a, Register b) { emit_int32(DIVW_OPCODE   | rt(d) | ra(a) | rb(b) | oe(1) | rc(0)); }
+ 161 inline void Assembler::divwo_(  Register d, Register a, Register b) { emit_int32(DIVW_OPCODE   | rt(d) | ra(a) | rb(b) | oe(1) | rc(1)); }
+ 162 
+ 163 // extended mnemonics
+ 164 inline void Assembler::li(   Register d, int si16)             { Assembler::addi_r0ok( d, R0, si16); }
+ 165 inline void Assembler::lis(  Register d, int si16)             { Assembler::addis_r0ok(d, R0, si16); }
+ 166 inline void Assembler::addir(Register d, int si16, Register a) { Assembler::addi(d, a, si16); }
+
+ 167 
+ 168 // PPC 1, section 3.3.9, Fixed-Point Compare Instructions
+ 169 inline void Assembler::cmpi(  ConditionRegister f, int l, Register a, int si16)   { emit_int32( CMPI_OPCODE  | bf(f) | l10(l) | ra(a) | simm(si16,16)); }
+ 170 inline void Assembler::cmp(   ConditionRegister f, int l, Register a, Register b) { emit_int32( CMP_OPCODE   | bf(f) | l10(l) | ra(a) | rb(b)); }
+ 171 inline void Assembler::cmpli( ConditionRegister f, int l, Register a, int ui16)   { emit_int32( CMPLI_OPCODE | bf(f) | l10(l) | ra(a) | uimm(ui16,16)); }
+ 172 inline void Assembler::cmpl(  ConditionRegister f, int l, Register a, Register b) { emit_int32( CMPL_OPCODE  | bf(f) | l10(l) | ra(a) | rb(b)); }
+ 173 
+ 174 // extended mnemonics of Compare Instructions
+ 175 inline void Assembler::cmpwi( ConditionRegister crx, Register a, int si16)   { Assembler::cmpi( crx, 0, a, si16); }
+ 176 inline void Assembler::cmpdi( ConditionRegister crx, Register a, int si16)   { Assembler::cmpi( crx, 1, a, si16); }
+ 177 inline void Assembler::cmpw(  ConditionRegister crx, Register a, Register b) { Assembler::cmp(  crx, 0, a, b); }
+ 178 inline void Assembler::cmpd(  ConditionRegister crx, Register a, Register b) { Assembler::cmp(  crx, 1, a, b); }
+ 179 inline void Assembler::cmplwi(ConditionRegister crx, Register a, int ui16)   { Assembler::cmpli(crx, 0, a, ui16); }
+ 180 inline void Assembler::cmpldi(ConditionRegister crx, Register a, int ui16)   { Assembler::cmpli(crx, 1, a, ui16); }
+ 181 inline void Assembler::cmplw( ConditionRegister crx, Register a, Register b) { Assembler::cmpl( crx, 0, a, b); }
+ 182 inline void Assembler::cmpld( ConditionRegister crx, Register a, Register b) { Assembler::cmpl( crx, 1, a, b); }
+ 183 
+ 184 inline void Assembler::isel(Register d, Register a, Register b, int c) { guarantee(VM_Version::has_isel(), "opcode not supported on this hardware");
+ 185                                                                          emit_int32(ISEL_OPCODE    | rt(d)  | ra(a) | rb(b) | bc(c)); }
+ 186 
+
+</pre><hr></hr>
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+ 147 inline void Assembler::subfmeo_(Register d, Register a)             { emit_int32(SUBFME_OPCODE | rt(d) | ra(a) |         oe(1) | rc(1)); }
+ 148 inline void Assembler::addzeo(  Register d, Register a)             { emit_int32(ADDZE_OPCODE  | rt(d) | ra(a) |         oe(1) | rc(0)); }
+ 149 inline void Assembler::addzeo_( Register d, Register a)             { emit_int32(ADDZE_OPCODE  | rt(d) | ra(a) |         oe(1) | rc(1)); }
+ 150 inline void Assembler::subfzeo( Register d, Register a)             { emit_int32(SUBFZE_OPCODE | rt(d) | ra(a) |         oe(1) | rc(0)); }
+ 151 inline void Assembler::subfzeo_(Register d, Register a)             { emit_int32(SUBFZE_OPCODE | rt(d) | ra(a) |         oe(1) | rc(1)); }
+ 152 inline void Assembler::nego(    Register d, Register a)             { emit_int32(NEG_OPCODE    | rt(d) | ra(a) | oe(1) | rc(0)); }
+ 153 inline void Assembler::nego_(   Register d, Register a)             { emit_int32(NEG_OPCODE    | rt(d) | ra(a) | oe(1) | rc(1)); }
+ 154 inline void Assembler::mulldo(  Register d, Register a, Register b) { emit_int32(MULLD_OPCODE  | rt(d) | ra(a) | rb(b) | oe(1) | rc(0)); }
+ 155 inline void Assembler::mulldo_( Register d, Register a, Register b) { emit_int32(MULLD_OPCODE  | rt(d) | ra(a) | rb(b) | oe(1) | rc(1)); }
+ 156 inline void Assembler::mullwo(  Register d, Register a, Register b) { emit_int32(MULLW_OPCODE  | rt(d) | ra(a) | rb(b) | oe(1) | rc(0)); }
+ 157 inline void Assembler::mullwo_( Register d, Register a, Register b) { emit_int32(MULLW_OPCODE  | rt(d) | ra(a) | rb(b) | oe(1) | rc(1)); }
+ 158 inline void Assembler::divdo(   Register d, Register a, Register b) { emit_int32(DIVD_OPCODE   | rt(d) | ra(a) | rb(b) | oe(1) | rc(0)); }
+ 159 inline void Assembler::divdo_(  Register d, Register a, Register b) { emit_int32(DIVD_OPCODE   | rt(d) | ra(a) | rb(b) | oe(1) | rc(1)); }
+ 160 inline void Assembler::divwo(   Register d, Register a, Register b) { emit_int32(DIVW_OPCODE   | rt(d) | ra(a) | rb(b) | oe(1) | rc(0)); }
+ 161 inline void Assembler::divwo_(  Register d, Register a, Register b) { emit_int32(DIVW_OPCODE   | rt(d) | ra(a) | rb(b) | oe(1) | rc(1)); }
+ 162 
+ 163 // extended mnemonics
+ 164 inline void Assembler::li(   Register d, int si16)             { Assembler::addi_r0ok( d, R0, si16); }
+ 165 inline void Assembler::lis(  Register d, int si16)             { Assembler::addis_r0ok(d, R0, si16); }
+ 166 inline void Assembler::addir(Register d, int si16, Register a) { Assembler::addi(d, a, si16); }
+<span class="new"> 167 inline void Assembler::subi( Register d, Register a, int si16) { Assembler::addi(d, a, -si16); }</span>
+ 168 
+ 169 // PPC 1, section 3.3.9, Fixed-Point Compare Instructions
+ 170 inline void Assembler::cmpi(  ConditionRegister f, int l, Register a, int si16)   { emit_int32( CMPI_OPCODE  | bf(f) | l10(l) | ra(a) | simm(si16,16)); }
+ 171 inline void Assembler::cmp(   ConditionRegister f, int l, Register a, Register b) { emit_int32( CMP_OPCODE   | bf(f) | l10(l) | ra(a) | rb(b)); }
+ 172 inline void Assembler::cmpli( ConditionRegister f, int l, Register a, int ui16)   { emit_int32( CMPLI_OPCODE | bf(f) | l10(l) | ra(a) | uimm(ui16,16)); }
+ 173 inline void Assembler::cmpl(  ConditionRegister f, int l, Register a, Register b) { emit_int32( CMPL_OPCODE  | bf(f) | l10(l) | ra(a) | rb(b)); }
+ 174 
+ 175 // extended mnemonics of Compare Instructions
+ 176 inline void Assembler::cmpwi( ConditionRegister crx, Register a, int si16)   { Assembler::cmpi( crx, 0, a, si16); }
+ 177 inline void Assembler::cmpdi( ConditionRegister crx, Register a, int si16)   { Assembler::cmpi( crx, 1, a, si16); }
+ 178 inline void Assembler::cmpw(  ConditionRegister crx, Register a, Register b) { Assembler::cmp(  crx, 0, a, b); }
+ 179 inline void Assembler::cmpd(  ConditionRegister crx, Register a, Register b) { Assembler::cmp(  crx, 1, a, b); }
+ 180 inline void Assembler::cmplwi(ConditionRegister crx, Register a, int ui16)   { Assembler::cmpli(crx, 0, a, ui16); }
+ 181 inline void Assembler::cmpldi(ConditionRegister crx, Register a, int ui16)   { Assembler::cmpli(crx, 1, a, ui16); }
+ 182 inline void Assembler::cmplw( ConditionRegister crx, Register a, Register b) { Assembler::cmpl( crx, 0, a, b); }
+ 183 inline void Assembler::cmpld( ConditionRegister crx, Register a, Register b) { Assembler::cmpl( crx, 1, a, b); }
+ 184 
+ 185 inline void Assembler::isel(Register d, Register a, Register b, int c) { guarantee(VM_Version::has_isel(), "opcode not supported on this hardware");
+ 186                                                                          emit_int32(ISEL_OPCODE    | rt(d)  | ra(a) | rb(b) | bc(c)); }
+ 187 
+
+</pre><hr></hr>
+</pre></td>
+</tr></table>
+<center><a href='../../../../src/cpu/ppc/vm/assembler_ppc.hpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/macroAssembler_ppc.cpp.sdiff.html' target='_top'>next &gt</a></center>
+</body></html>

@@ -1,0 +1,255 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk10-hotspot-hg Sdiff src/cpu/ppc/vm </title>
+</head><body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/assembler_ppc.inline.hpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/macroAssembler_ppc.hpp.sdiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/macroAssembler_ppc.cpp</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13389">13389</a> : PPC: Implement MulAdd and SquareToLen intrinsics
+
+This implementation is based on the algorithm implemented in java. It
+yields a performance speedup of:
+JDK8 - 23%
+JDK9 - 5%
+JDK10 - 5%</pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+5211   blt(CCR0, L_post_third_loop_done);
+5212 
+5213   sldi(tmp, idx, LogBytesPerInt);
+5214   lwzx(yz_idx, y, tmp);
+5215   multiply64(product_high, product, x_xstart, yz_idx);
+5216   lwzx(yz_idx, z, tmp);
+5217 
+5218   add2_with_carry(product_high, product, yz_idx, carry);
+5219 
+5220   sldi(tmp, idx, LogBytesPerInt);
+5221   stwx(product, z, tmp);
+5222   srdi(product, product, 32);
+5223 
+5224   sldi(product_high, product_high, 32);
+5225   orr(product, product, product_high);
+5226   mr_if_needed(carry, product);
+5227 
+5228   bind(L_post_third_loop_done);
+5229 }   // multiply_128_x_128_loop
+5230 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+5231 void MacroAssembler::multiply_to_len(Register x, Register xlen,
+5232                                      Register y, Register ylen,
+5233                                      Register z, Register zlen,
+5234                                      Register tmp1, Register tmp2,
+5235                                      Register tmp3, Register tmp4,
+5236                                      Register tmp5, Register tmp6,
+5237                                      Register tmp7, Register tmp8,
+5238                                      Register tmp9, Register tmp10,
+5239                                      Register tmp11, Register tmp12,
+5240                                      Register tmp13) {
+5241 
+5242   ShortBranchVerifier sbv(this);
+5243 
+5244   assert_different_registers(x, xlen, y, ylen, z, zlen,
+5245                              tmp1, tmp2, tmp3, tmp4, tmp5, tmp6);
+5246   assert_different_registers(x, xlen, y, ylen, z, zlen,
+5247                              tmp1, tmp2, tmp3, tmp4, tmp5, tmp7);
+5248   assert_different_registers(x, xlen, y, ylen, z, zlen,
+5249                              tmp1, tmp2, tmp3, tmp4, tmp5, tmp8);
+5250 
+
+</pre><hr></hr>
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+5211   blt(CCR0, L_post_third_loop_done);
+5212 
+5213   sldi(tmp, idx, LogBytesPerInt);
+5214   lwzx(yz_idx, y, tmp);
+5215   multiply64(product_high, product, x_xstart, yz_idx);
+5216   lwzx(yz_idx, z, tmp);
+5217 
+5218   add2_with_carry(product_high, product, yz_idx, carry);
+5219 
+5220   sldi(tmp, idx, LogBytesPerInt);
+5221   stwx(product, z, tmp);
+5222   srdi(product, product, 32);
+5223 
+5224   sldi(product_high, product_high, 32);
+5225   orr(product, product, product_high);
+5226   mr_if_needed(carry, product);
+5227 
+5228   bind(L_post_third_loop_done);
+5229 }   // multiply_128_x_128_loop
+5230 
+<span class="new">5231 void MacroAssembler::muladd(Register out, Register in,</span>
+<span class="new">5232                             Register offset, Register len, Register k,</span>
+<span class="new">5233                             Register tmp1, Register tmp2, Register carry) {</span>
+<span class="new">5234 </span>
+<span class="new">5235     // Labels</span>
+<span class="new">5236     Label LOOP, SKIP;</span>
+<span class="new">5237 </span>
+<span class="new">5238     // Make sure length is positive.</span>
+<span class="new">5239     cmpdi  (CCR0,    len,     0);</span>
+<span class="new">5240 </span>
+<span class="new">5241     // Prepare variables</span>
+<span class="new">5242     subi   (offset,  offset,  4);</span>
+<span class="new">5243     li     (carry,   0);</span>
+<span class="new">5244     ble    (CCR0,    SKIP);</span>
+<span class="new">5245 </span>
+<span class="new">5246     mtctr  (len);</span>
+<span class="new">5247     subi   (len,     len,     1    );</span>
+<span class="new">5248     sldi   (len,     len,     2    );</span>
+<span class="new">5249 </span>
+<span class="new">5250     // Main loop</span>
+<span class="new">5251     bind(LOOP);</span>
+<span class="new">5252     lwzx   (tmp1,    len,     in   );</span>
+<span class="new">5253     lwzx   (tmp2,    offset,  out  );</span>
+<span class="new">5254     mulld  (tmp1,    tmp1,    k    );</span>
+<span class="new">5255     add    (tmp2,    carry,   tmp2 );</span>
+<span class="new">5256     add    (tmp2,    tmp1,    tmp2 );</span>
+<span class="new">5257     stwx   (tmp2,    offset,  out  );</span>
+<span class="new">5258     srdi   (carry,   tmp2,    32   );</span>
+<span class="new">5259     subi   (offset,  offset,  4    );</span>
+<span class="new">5260     subi   (len,     len,     4    );</span>
+<span class="new">5261     bdnz   (LOOP);</span>
+<span class="new">5262     bind(SKIP);</span>
+<span class="new">5263 }</span>
+<span class="new">5264 </span>
+5265 void MacroAssembler::multiply_to_len(Register x, Register xlen,
+5266                                      Register y, Register ylen,
+5267                                      Register z, Register zlen,
+5268                                      Register tmp1, Register tmp2,
+5269                                      Register tmp3, Register tmp4,
+5270                                      Register tmp5, Register tmp6,
+5271                                      Register tmp7, Register tmp8,
+5272                                      Register tmp9, Register tmp10,
+5273                                      Register tmp11, Register tmp12,
+5274                                      Register tmp13) {
+5275 
+5276   ShortBranchVerifier sbv(this);
+5277 
+5278   assert_different_registers(x, xlen, y, ylen, z, zlen,
+5279                              tmp1, tmp2, tmp3, tmp4, tmp5, tmp6);
+5280   assert_different_registers(x, xlen, y, ylen, z, zlen,
+5281                              tmp1, tmp2, tmp3, tmp4, tmp5, tmp7);
+5282   assert_different_registers(x, xlen, y, ylen, z, zlen,
+5283                              tmp1, tmp2, tmp3, tmp4, tmp5, tmp8);
+5284 
+
+</pre><hr></hr>
+</pre></td>
+</tr></table>
+<center><a href='../../../../src/cpu/ppc/vm/assembler_ppc.inline.hpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/macroAssembler_ppc.hpp.sdiff.html' target='_top'>next &gt</a></center>
+</body></html>

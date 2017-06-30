@@ -1,0 +1,20 @@
+--- old/src/cpu/ppc/vm/stubGenerator_ppc.cpp	2017-08-08 15:19:19.834833719 -0300
++++ new/src/cpu/ppc/vm/stubGenerator_ppc.cpp	2017-08-08 15:19:19.698833719 -0300
+@@ -2729,7 +2729,7 @@
+     __ vspltisb        (vTmp2, -16);
+     __ vrld            (keyPerm, keyPerm, vTmp2);
+     __ vrld            (keyPerm, keyPerm, vTmp2);
+-    __ vsldoi          (keyPerm, keyPerm, keyPerm, -8);
++    __ vsldoi          (keyPerm, keyPerm, keyPerm, 8);
+ 
+     // load the 1st round key to vKey1
+     __ li              (keypos, 0);
+@@ -2929,7 +2929,7 @@
+     __ vspltisb        (vTmp2, -16);
+     __ vrld            (keyPerm, keyPerm, vTmp2);
+     __ vrld            (keyPerm, keyPerm, vTmp2);
+-    __ vsldoi          (keyPerm, keyPerm, keyPerm, -8);
++    __ vsldoi          (keyPerm, keyPerm, keyPerm, 8);
+ 
+     __ cmpwi           (CCR0, keylen, 44);
+     __ beq             (CCR0, L_do44);

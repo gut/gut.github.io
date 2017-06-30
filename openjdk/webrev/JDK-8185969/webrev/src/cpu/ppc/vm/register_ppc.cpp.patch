@@ -1,0 +1,54 @@
+--- old/src/cpu/ppc/vm/register_ppc.cpp	2017-08-08 15:15:41.394833719 -0300
++++ new/src/cpu/ppc/vm/register_ppc.cpp	2017-08-08 15:15:40.946833719 -0300
+@@ -81,8 +81,50 @@
+     "VSR0",  "VSR1",  "VSR2",  "VSR3",  "VSR4",  "VSR5",  "VSR6",  "VSR7",
+     "VSR8",  "VSR9",  "VSR10", "VSR11", "VSR12", "VSR13", "VSR14", "VSR15",
+     "VSR16", "VSR17", "VSR18", "VSR19", "VSR20", "VSR21", "VSR22", "VSR23",
+-    "VSR24", "VSR25", "VSR26", "VSR27", "VSR28", "VSR29", "VSR30", "VSR31"
++    "VSR24", "VSR25", "VSR26", "VSR27", "VSR28", "VSR29", "VSR30", "VSR31",
++    "VSR32", "VSR33", "VSR34", "VSR35", "VSR36", "VSR37", "VSR38", "VSR39",
++    "VSR40", "VSR41", "VSR42", "VSR43", "VSR44", "VSR45", "VSR46", "VSR47",
++    "VSR48", "VSR49", "VSR50", "VSR51", "VSR52", "VSR53", "VSR54", "VSR55",
++    "VSR56", "VSR57", "VSR58", "VSR59", "VSR60", "VSR61", "VSR62", "VSR63"
+   };
+   return is_valid() ? names[encoding()] : "vsnoreg";
+ }
+ 
++// Method to convert a VectorRegister to a Vector-Scalar Register (VectorSRegister)
++VectorSRegister VectorRegisterImpl::to_vsr() const {
++  // Inneficient, but the short list won't hurt performance plus it's very easy
++  // to understand and review.
++  if (VR0 ==  this) return VSR32;
++  if (VR1 ==  this) return VSR33;
++  if (VR2 ==  this) return VSR34;
++  if (VR3 ==  this) return VSR35;
++  if (VR4 ==  this) return VSR36;
++  if (VR5 ==  this) return VSR37;
++  if (VR6 ==  this) return VSR38;
++  if (VR7 ==  this) return VSR39;
++  if (VR8 ==  this) return VSR40;
++  if (VR9 ==  this) return VSR41;
++  if (VR10 == this) return VSR42;
++  if (VR11 == this) return VSR43;
++  if (VR12 == this) return VSR44;
++  if (VR13 == this) return VSR45;
++  if (VR14 == this) return VSR46;
++  if (VR15 == this) return VSR47;
++  if (VR16 == this) return VSR48;
++  if (VR17 == this) return VSR49;
++  if (VR18 == this) return VSR50;
++  if (VR19 == this) return VSR51;
++  if (VR20 == this) return VSR52;
++  if (VR21 == this) return VSR53;
++  if (VR22 == this) return VSR54;
++  if (VR23 == this) return VSR55;
++  if (VR24 == this) return VSR56;
++  if (VR25 == this) return VSR57;
++  if (VR26 == this) return VSR58;
++  if (VR27 == this) return VSR59;
++  if (VR28 == this) return VSR60;
++  if (VR29 == this) return VSR61;
++  if (VR30 == this) return VSR62;
++  if (VR31 == this) return VSR63;
++  return vsnoregi;
++}

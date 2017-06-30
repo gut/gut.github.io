@@ -1,0 +1,57 @@
+--- old/src/cpu/ppc/vm/assembler_ppc.inline.hpp	2017-08-08 15:19:18.418833719 -0300
++++ new/src/cpu/ppc/vm/assembler_ppc.inline.hpp	2017-08-08 15:19:18.302833719 -0300
+@@ -800,7 +800,7 @@
+ inline void Assembler::vperm(   VectorRegister d, VectorRegister a, VectorRegister b, VectorRegister c){ emit_int32( VPERM_OPCODE | vrt(d) | vra(a) | vrb(b) | vrc(c)); }
+ inline void Assembler::vsel(    VectorRegister d, VectorRegister a, VectorRegister b, VectorRegister c){ emit_int32( VSEL_OPCODE  | vrt(d) | vra(a) | vrb(b) | vrc(c)); }
+ inline void Assembler::vsl(     VectorRegister d, VectorRegister a, VectorRegister b)                  { emit_int32( VSL_OPCODE   | vrt(d) | vra(a) | vrb(b)); }
+-inline void Assembler::vsldoi(  VectorRegister d, VectorRegister a, VectorRegister b, int si4)         { emit_int32( VSLDOI_OPCODE| vrt(d) | vra(a) | vrb(b) | vsldoi_shb(simm(si4,4))); }
++inline void Assembler::vsldoi(  VectorRegister d, VectorRegister a, VectorRegister b, int si4)         { emit_int32( VSLDOI_OPCODE| vrt(d) | vra(a) | vrb(b) | vsldoi_shb(uimm(si4,4))); }
+ inline void Assembler::vslo(    VectorRegister d, VectorRegister a, VectorRegister b) { emit_int32( VSLO_OPCODE    | vrt(d) | vra(a) | vrb(b)); }
+ inline void Assembler::vsr(     VectorRegister d, VectorRegister a, VectorRegister b) { emit_int32( VSR_OPCODE     | vrt(d) | vra(a) | vrb(b)); }
+ inline void Assembler::vsro(    VectorRegister d, VectorRegister a, VectorRegister b) { emit_int32( VSRO_OPCODE    | vrt(d) | vra(a) | vrb(b)); }
+--- old/src/cpu/ppc/vm/macroAssembler_ppc.cpp	2017-08-08 15:19:19.086833719 -0300
++++ new/src/cpu/ppc/vm/macroAssembler_ppc.cpp	2017-08-08 15:19:18.962833719 -0300
+@@ -4576,12 +4576,12 @@
+   vspltisw(VR0, -1);
+ 
+   vsldoi(mask_32bit, zeroes, VR0, 4);
+-  vsldoi(mask_64bit, zeroes, VR0, -8);
++  vsldoi(mask_64bit, zeroes, VR0, 8);
+ 
+   // Get the initial value into v8
+   vxor(VR8, VR8, VR8);
+   mtvrd(VR8, crc);
+-  vsldoi(VR8, zeroes, VR8, -8); // shift into bottom 32 bits
++  vsldoi(VR8, zeroes, VR8, 8); // shift into bottom 32 bits
+ 
+   li (rLoaded, 0);
+ 
+@@ -4930,7 +4930,7 @@
+   addi(barretConstants, barretConstants, 16);
+   lvx(const2, barretConstants);
+ 
+-  vsldoi(VR1, VR0, VR0, -8);
++  vsldoi(VR1, VR0, VR0, 8);
+   vxor(VR0, VR0, VR1);    // xor two 64 bit results together
+ 
+   // shift left one bit
+--- old/src/cpu/ppc/vm/stubGenerator_ppc.cpp	2017-08-08 15:19:19.834833719 -0300
++++ new/src/cpu/ppc/vm/stubGenerator_ppc.cpp	2017-08-08 15:19:19.698833719 -0300
+@@ -2729,7 +2729,7 @@
+     __ vspltisb        (vTmp2, -16);
+     __ vrld            (keyPerm, keyPerm, vTmp2);
+     __ vrld            (keyPerm, keyPerm, vTmp2);
+-    __ vsldoi          (keyPerm, keyPerm, keyPerm, -8);
++    __ vsldoi          (keyPerm, keyPerm, keyPerm, 8);
+ 
+     // load the 1st round key to vKey1
+     __ li              (keypos, 0);
+@@ -2929,7 +2929,7 @@
+     __ vspltisb        (vTmp2, -16);
+     __ vrld            (keyPerm, keyPerm, vTmp2);
+     __ vrld            (keyPerm, keyPerm, vTmp2);
+-    __ vsldoi          (keyPerm, keyPerm, keyPerm, -8);
++    __ vsldoi          (keyPerm, keyPerm, keyPerm, 8);
+ 
+     __ cmpwi           (CCR0, keylen, 44);
+     __ beq             (CCR0, L_do44);
