@@ -1,0 +1,242 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta name="scm" content="mercurial" />
+<meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk10-hotspot-hg</title>
+</head>
+<body id="SUNWwebrev">
+<div class="summary">
+<h2>Code Review for jdk10-hotspot-hg</h2>
+<table>
+<tr><th>Prepared by:</th><td>Gustavo Serra Scalet <gustavo.scalet@eldorado.org.br> on Fri Jun 30 16:20:30 -03 2017</td></tr>
+<tr><th>Workspace:</th><td>/home/gut/jdk10-hotspot-hg</td></tr>
+<tr><th>Compare against:</th><td>
+ssh://10.10.71.67/jdk10-hs/hotspot
+</td></tr>
+<tr><th>Compare against version:</th><td>13008</td></tr>
+<tr><th>Branch:</th><td>squaretolen_intrinsics</td></tr>
+<tr><th>Summary of changes:</th><td>
+303 lines changed: 303 ins; 0 del; 0 mod; 14171 unchg</td></tr>
+<tr><th>Patch of changes:</th><td>
+<a href="jdk10-hotspot-hg.patch">jdk10-hotspot-hg.patch</a></td></tr>
+<tr><th>Legend:</th><td>
+<b>Modified file</b><br><font color=red><b>Deleted file</b></font><br><font color=green><b>New file</b></font></td></tr>
+</table>
+</div>
+<p><code>
+<a href="src/cpu/ppc/vm/assembler_ppc.hpp.cdiff.html">Cdiffs</a>
+<a href="src/cpu/ppc/vm/assembler_ppc.hpp.udiff.html">Udiffs</a>
+<a href="src/cpu/ppc/vm/assembler_ppc.hpp.wdiff.html">Wdiffs</a>
+<a href="src/cpu/ppc/vm/assembler_ppc.hpp.sdiff.html">Sdiffs</a>
+<a href="src/cpu/ppc/vm/assembler_ppc.hpp.frames.html">Frames</a>
+<a href="src/cpu/ppc/vm/assembler_ppc.hpp-.html">Old</a>
+<a href="src/cpu/ppc/vm/assembler_ppc.hpp.html">New</a>
+<a href="src/cpu/ppc/vm/assembler_ppc.hpp.patch">Patch</a>
+<a href="raw_files/new/src/cpu/ppc/vm/assembler_ppc.hpp">Raw</a>
+</code>
+<b>src/cpu/ppc/vm/assembler_ppc.hpp</b> 
+</p><blockquote><pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13010">13010</a> : PPC: Implement MulAdd and SquareToLen intrinsics
+
+This implementation is based on the algorithm implemented in java. It
+yields a performance speedup of:
+JDK8 - 23%
+JDK9 - 5%
+JDK10 - 5%</pre>
+<!-- Add comments to explain changes in src/cpu/ppc/vm/assembler_ppc.hpp here -->
+<span class="lineschanged">1 line changed: 1 ins; 0 del; 0 mod; 2317 unchg</span>
+</blockquote>
+<p><code>
+<a href="src/cpu/ppc/vm/assembler_ppc.inline.hpp.cdiff.html">Cdiffs</a>
+<a href="src/cpu/ppc/vm/assembler_ppc.inline.hpp.udiff.html">Udiffs</a>
+<a href="src/cpu/ppc/vm/assembler_ppc.inline.hpp.wdiff.html">Wdiffs</a>
+<a href="src/cpu/ppc/vm/assembler_ppc.inline.hpp.sdiff.html">Sdiffs</a>
+<a href="src/cpu/ppc/vm/assembler_ppc.inline.hpp.frames.html">Frames</a>
+<a href="src/cpu/ppc/vm/assembler_ppc.inline.hpp-.html">Old</a>
+<a href="src/cpu/ppc/vm/assembler_ppc.inline.hpp.html">New</a>
+<a href="src/cpu/ppc/vm/assembler_ppc.inline.hpp.patch">Patch</a>
+<a href="raw_files/new/src/cpu/ppc/vm/assembler_ppc.inline.hpp">Raw</a>
+</code>
+<b>src/cpu/ppc/vm/assembler_ppc.inline.hpp</b> 
+</p><blockquote><pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13010">13010</a> : PPC: Implement MulAdd and SquareToLen intrinsics
+
+This implementation is based on the algorithm implemented in java. It
+yields a performance speedup of:
+JDK8 - 23%
+JDK9 - 5%
+JDK10 - 5%</pre>
+<!-- Add comments to explain changes in src/cpu/ppc/vm/assembler_ppc.inline.hpp here -->
+<span class="lineschanged">1 line changed: 1 ins; 0 del; 0 mod; 1035 unchg</span>
+</blockquote>
+<p><code>
+<a href="src/cpu/ppc/vm/macroAssembler_ppc.cpp.cdiff.html">Cdiffs</a>
+<a href="src/cpu/ppc/vm/macroAssembler_ppc.cpp.udiff.html">Udiffs</a>
+<a href="src/cpu/ppc/vm/macroAssembler_ppc.cpp.wdiff.html">Wdiffs</a>
+<a href="src/cpu/ppc/vm/macroAssembler_ppc.cpp.sdiff.html">Sdiffs</a>
+<a href="src/cpu/ppc/vm/macroAssembler_ppc.cpp.frames.html">Frames</a>
+<a href="src/cpu/ppc/vm/macroAssembler_ppc.cpp-.html">Old</a>
+<a href="src/cpu/ppc/vm/macroAssembler_ppc.cpp.html">New</a>
+<a href="src/cpu/ppc/vm/macroAssembler_ppc.cpp.patch">Patch</a>
+<a href="raw_files/new/src/cpu/ppc/vm/macroAssembler_ppc.cpp">Raw</a>
+</code>
+<b>src/cpu/ppc/vm/macroAssembler_ppc.cpp</b> 
+</p><blockquote><pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13010">13010</a> : PPC: Implement MulAdd and SquareToLen intrinsics
+
+This implementation is based on the algorithm implemented in java. It
+yields a performance speedup of:
+JDK8 - 23%
+JDK9 - 5%
+JDK10 - 5%</pre>
+<!-- Add comments to explain changes in src/cpu/ppc/vm/macroAssembler_ppc.cpp here -->
+<span class="lineschanged">34 lines changed: 34 ins; 0 del; 0 mod; 5547 unchg</span>
+</blockquote>
+<p><code>
+<a href="src/cpu/ppc/vm/macroAssembler_ppc.hpp.cdiff.html">Cdiffs</a>
+<a href="src/cpu/ppc/vm/macroAssembler_ppc.hpp.udiff.html">Udiffs</a>
+<a href="src/cpu/ppc/vm/macroAssembler_ppc.hpp.wdiff.html">Wdiffs</a>
+<a href="src/cpu/ppc/vm/macroAssembler_ppc.hpp.sdiff.html">Sdiffs</a>
+<a href="src/cpu/ppc/vm/macroAssembler_ppc.hpp.frames.html">Frames</a>
+<a href="src/cpu/ppc/vm/macroAssembler_ppc.hpp-.html">Old</a>
+<a href="src/cpu/ppc/vm/macroAssembler_ppc.hpp.html">New</a>
+<a href="src/cpu/ppc/vm/macroAssembler_ppc.hpp.patch">Patch</a>
+<a href="raw_files/new/src/cpu/ppc/vm/macroAssembler_ppc.hpp">Raw</a>
+</code>
+<b>src/cpu/ppc/vm/macroAssembler_ppc.hpp</b> 
+</p><blockquote><pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13010">13010</a> : PPC: Implement MulAdd and SquareToLen intrinsics
+
+This implementation is based on the algorithm implemented in java. It
+yields a performance speedup of:
+JDK8 - 23%
+JDK9 - 5%
+JDK10 - 5%</pre>
+<!-- Add comments to explain changes in src/cpu/ppc/vm/macroAssembler_ppc.hpp here -->
+<span class="lineschanged">2 lines changed: 2 ins; 0 del; 0 mod; 943 unchg</span>
+</blockquote>
+<p><code>
+<a href="src/cpu/ppc/vm/stubGenerator_ppc.cpp.cdiff.html">Cdiffs</a>
+<a href="src/cpu/ppc/vm/stubGenerator_ppc.cpp.udiff.html">Udiffs</a>
+<a href="src/cpu/ppc/vm/stubGenerator_ppc.cpp.wdiff.html">Wdiffs</a>
+<a href="src/cpu/ppc/vm/stubGenerator_ppc.cpp.sdiff.html">Sdiffs</a>
+<a href="src/cpu/ppc/vm/stubGenerator_ppc.cpp.frames.html">Frames</a>
+<a href="src/cpu/ppc/vm/stubGenerator_ppc.cpp-.html">Old</a>
+<a href="src/cpu/ppc/vm/stubGenerator_ppc.cpp.html">New</a>
+<a href="src/cpu/ppc/vm/stubGenerator_ppc.cpp.patch">Patch</a>
+<a href="raw_files/new/src/cpu/ppc/vm/stubGenerator_ppc.cpp">Raw</a>
+</code>
+<b>src/cpu/ppc/vm/stubGenerator_ppc.cpp</b> 
+</p><blockquote><pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13010">13010</a> : PPC: Implement MulAdd and SquareToLen intrinsics
+
+This implementation is based on the algorithm implemented in java. It
+yields a performance speedup of:
+JDK8 - 23%
+JDK9 - 5%
+JDK10 - 5%</pre>
+<!-- Add comments to explain changes in src/cpu/ppc/vm/stubGenerator_ppc.cpp here -->
+<span class="lineschanged">259 lines changed: 259 ins; 0 del; 0 mod; 3532 unchg</span>
+</blockquote>
+<p><code>
+<a href="src/cpu/ppc/vm/vm_version_ppc.cpp.cdiff.html">Cdiffs</a>
+<a href="src/cpu/ppc/vm/vm_version_ppc.cpp.udiff.html">Udiffs</a>
+<a href="src/cpu/ppc/vm/vm_version_ppc.cpp.wdiff.html">Wdiffs</a>
+<a href="src/cpu/ppc/vm/vm_version_ppc.cpp.sdiff.html">Sdiffs</a>
+<a href="src/cpu/ppc/vm/vm_version_ppc.cpp.frames.html">Frames</a>
+<a href="src/cpu/ppc/vm/vm_version_ppc.cpp-.html">Old</a>
+<a href="src/cpu/ppc/vm/vm_version_ppc.cpp.html">New</a>
+<a href="src/cpu/ppc/vm/vm_version_ppc.cpp.patch">Patch</a>
+<a href="raw_files/new/src/cpu/ppc/vm/vm_version_ppc.cpp">Raw</a>
+</code>
+<b>src/cpu/ppc/vm/vm_version_ppc.cpp</b> 
+</p><blockquote><pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13010">13010</a> : PPC: Implement MulAdd and SquareToLen intrinsics
+
+This implementation is based on the algorithm implemented in java. It
+yields a performance speedup of:
+JDK8 - 23%
+JDK9 - 5%
+JDK10 - 5%</pre>
+<!-- Add comments to explain changes in src/cpu/ppc/vm/vm_version_ppc.cpp here -->
+<span class="lineschanged">6 lines changed: 6 ins; 0 del; 0 mod; 797 unchg</span>
+</blockquote>
+
+
+<hr />
+<p style="font-size: small">
+This code review page was prepared using <b>webrev.ksh</b>
+(vers 25.16-hg+openjdk.java.net).
+</body>
+</html>

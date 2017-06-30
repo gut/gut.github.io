@@ -1,0 +1,4 @@
+src/cpu/ppc/vm/assembler_ppc.hpp
+src/cpu/ppc/vm/assembler_ppc.inline.hpp
+src/cpu/ppc/vm/register_ppc.cpp
+src/cpu/ppc/vm/register_ppc.hpp

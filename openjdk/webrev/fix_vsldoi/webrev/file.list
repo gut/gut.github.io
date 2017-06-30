@@ -1,0 +1,3 @@
+src/cpu/ppc/vm/assembler_ppc.inline.hpp
+src/cpu/ppc/vm/macroAssembler_ppc.cpp
+src/cpu/ppc/vm/stubGenerator_ppc.cpp
