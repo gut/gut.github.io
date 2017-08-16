@@ -1,0 +1,147 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk10-hotspot-hg Udiff src/cpu/ppc/vm/macroAssembler_ppc.cpp</title>
+
+<style type="text/css" media="screen">
+span.new {
+    color: blue;
+    font-weight: normal;
+}
+</style>
+
+</head>
+<body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/assembler_ppc.inline.hpp.udiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/macroAssembler_ppc.hpp.udiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/macroAssembler_ppc.cpp</h2>
+        <a class="print" href="javascript:print()">Print this page</a>
+<pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13390">13390</a> : Fix issues pointed out by Martin Doerr.
+
+http://mail.openjdk.java.net/pipermail/hotspot-compiler-dev/2017-August/<a href="https://bugs.openjdk.java.net/browse/JDK-026850">026850</a>.html</pre>
+        <pre>
+</pre><hr /><pre>
+<span class="newmarker">@@ -5226,10 +5226,44 @@</span>
+   mr_if_needed(carry, product);
+ 
+   bind(L_post_third_loop_done);
+ }   // multiply_128_x_128_loop
+ 
+<span class="new">+void MacroAssembler::muladd(Register out, Register in,</span>
+<span class="new">+                            Register offset, Register len, Register k,</span>
+<span class="new">+                            Register tmp1, Register tmp2, Register carry) {</span>
+<span class="new">+</span>
+<span class="new">+  // Labels</span>
+<span class="new">+  Label LOOP, SKIP;</span>
+<span class="new">+</span>
+<span class="new">+  // Make sure length is positive.</span>
+<span class="new">+  cmpdi  (CCR0,    len,     0);</span>
+<span class="new">+</span>
+<span class="new">+  // Prepare variables</span>
+<span class="new">+  subi   (offset,  offset,  4);</span>
+<span class="new">+  li     (carry,   0);</span>
+<span class="new">+  ble    (CCR0,    SKIP);</span>
+<span class="new">+</span>
+<span class="new">+  mtctr  (len);</span>
+<span class="new">+  subi   (len,     len,     1    );</span>
+<span class="new">+  sldi   (len,     len,     2    );</span>
+<span class="new">+</span>
+<span class="new">+  // Main loop</span>
+<span class="new">+  bind(LOOP);</span>
+<span class="new">+  lwzx   (tmp1,    len,     in   );</span>
+<span class="new">+  lwzx   (tmp2,    offset,  out  );</span>
+<span class="new">+  mulld  (tmp1,    tmp1,    k    );</span>
+<span class="new">+  add    (tmp2,    carry,   tmp2 );</span>
+<span class="new">+  add    (tmp2,    tmp1,    tmp2 );</span>
+<span class="new">+  stwx   (tmp2,    offset,  out  );</span>
+<span class="new">+  srdi   (carry,   tmp2,    32   );</span>
+<span class="new">+  subi   (offset,  offset,  4    );</span>
+<span class="new">+  subi   (len,     len,     4    );</span>
+<span class="new">+  bdnz   (LOOP);</span>
+<span class="new">+  bind(SKIP);</span>
+<span class="new">+}</span>
+<span class="new">+</span>
+ void MacroAssembler::multiply_to_len(Register x, Register xlen,
+                                      Register y, Register ylen,
+                                      Register z, Register zlen,
+                                      Register tmp1, Register tmp2,
+                                      Register tmp3, Register tmp4,
+</pre>
+<center><a href='../../../../src/cpu/ppc/vm/assembler_ppc.inline.hpp.udiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/macroAssembler_ppc.hpp.udiff.html' target='_top'>next &gt</a></center>
+</body></html>
+
