@@ -1,0 +1,26 @@
+--- old/src/cpu/ppc/vm/vm_version_ppc.hpp	2017-08-17 15:59:01.506833719 -0300
++++ new/src/cpu/ppc/vm/vm_version_ppc.hpp	2017-08-17 15:59:01.382833719 -0300
+@@ -49,6 +49,7 @@
+     vsx,
+     ldbrx,
+     stdbrx,
++    vshasig,
+     num_features // last entry to count features
+   };
+   enum Feature_Flag_Set {
+@@ -64,6 +65,7 @@
+     vand_m                = (1 << vand   ),
+     lqarx_m               = (1 << lqarx  ),
+     vcipher_m             = (1 << vcipher),
++    vshasig_m             = (1 << vshasig),
+     vpmsumb_m             = (1 << vpmsumb),
+     tcheck_m              = (1 << tcheck ),
+     mfdscr_m              = (1 << mfdscr ),
+@@ -106,6 +108,7 @@
+   static bool has_vsx()     { return (_features & vsx_m) != 0; }
+   static bool has_ldbrx()   { return (_features & ldbrx_m) != 0; }
+   static bool has_stdbrx()  { return (_features & stdbrx_m) != 0; }
++  static bool has_vshasig() { return (_features & vshasig_m) != 0; }
+   static bool has_mtfprd()  { return has_vpmsumb(); } // alias for P8
+ 
+   // Assembler testing

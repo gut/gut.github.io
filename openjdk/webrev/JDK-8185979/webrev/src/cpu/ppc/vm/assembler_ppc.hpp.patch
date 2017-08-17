@@ -1,0 +1,12 @@
+--- old/src/cpu/ppc/vm/assembler_ppc.hpp	2017-08-17 15:58:55.994833719 -0300
++++ new/src/cpu/ppc/vm/assembler_ppc.hpp	2017-08-17 15:58:55.750833719 -0300
+@@ -2174,7 +2174,8 @@
+   inline void vsbox(       VectorRegister d, VectorRegister a);
+ 
+   // SHA (introduced with Power 8)
+-  // Not yet implemented.
++  inline void vshasigmad(VectorRegister d, VectorRegister a, bool st, int six);
++  inline void vshasigmaw(VectorRegister d, VectorRegister a, bool st, int six);
+ 
+   // Vector Binary Polynomial Multiplication (introduced with Power 8)
+   inline void vpmsumb(  VectorRegister d, VectorRegister a, VectorRegister b);

@@ -1,0 +1,257 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk10-hotspot-hg Sdiff src/cpu/ppc/vm </title>
+</head><body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/assembler_ppc.inline.hpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/stubGenerator_ppc.cpp.sdiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/macroAssembler_ppc.hpp</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13437">13437</a> : Implement SHA256 and SHA512 intrinsics for PPC64
+
+Sample run reduced 6.5s run to 2.8s for SHA256.</pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+ 844   void kernel_crc32_1word(Register crc, Register buf, Register len, Register table,
+ 845                           Register t0,  Register t1,  Register t2,  Register t3,
+ 846                           Register tc0, Register tc1, Register tc2, Register tc3,
+ 847                           bool invertCRC);
+ 848   void kernel_crc32_1byte(Register crc, Register buf, Register len, Register table,
+ 849                           Register t0,  Register t1,  Register t2,  Register t3,
+ 850                           bool invertCRC);
+ 851   void kernel_crc32_1word_vpmsumd(Register crc, Register buf, Register len, Register table,
+ 852                           Register constants, Register barretConstants,
+ 853                           Register t0,  Register t1, Register t2, Register t3, Register t4,
+ 854                           bool invertCRC);
+ 855   void kernel_crc32_1word_aligned(Register crc, Register buf, Register len,
+ 856                           Register constants, Register barretConstants,
+ 857                           Register t0, Register t1, Register t2);
+ 858 
+ 859   void kernel_crc32_singleByte(Register crc, Register buf, Register len, Register table, Register tmp,
+ 860                                bool invertCRC);
+ 861   void kernel_crc32_singleByteReg(Register crc, Register val, Register table,
+ 862                                   bool invertCRC);
+ 863 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 864   //
+ 865   // Debugging
+ 866   //
+ 867 
+ 868   // assert on cr0
+ 869   void asm_assert(bool check_equal, const char* msg, int id);
+ 870   void asm_assert_eq(const char* msg, int id) { asm_assert(true, msg, id); }
+ 871   void asm_assert_ne(const char* msg, int id) { asm_assert(false, msg, id); }
+ 872 
+ 873  private:
+ 874   void asm_assert_mems_zero(bool check_equal, int size, int mem_offset, Register mem_base,
+ 875                             const char* msg, int id);
+ 876 
+ 877  public:
+ 878 
+ 879   void asm_assert_mem8_is_zero(int mem_offset, Register mem_base, const char* msg, int id) {
+ 880     asm_assert_mems_zero(true,  8, mem_offset, mem_base, msg, id);
+ 881   }
+ 882   void asm_assert_mem8_isnot_zero(int mem_offset, Register mem_base, const char* msg, int id) {
+ 883     asm_assert_mems_zero(false, 8, mem_offset, mem_base, msg, id);
+
+</pre><hr></hr>
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+ 844   void kernel_crc32_1word(Register crc, Register buf, Register len, Register table,
+ 845                           Register t0,  Register t1,  Register t2,  Register t3,
+ 846                           Register tc0, Register tc1, Register tc2, Register tc3,
+ 847                           bool invertCRC);
+ 848   void kernel_crc32_1byte(Register crc, Register buf, Register len, Register table,
+ 849                           Register t0,  Register t1,  Register t2,  Register t3,
+ 850                           bool invertCRC);
+ 851   void kernel_crc32_1word_vpmsumd(Register crc, Register buf, Register len, Register table,
+ 852                           Register constants, Register barretConstants,
+ 853                           Register t0,  Register t1, Register t2, Register t3, Register t4,
+ 854                           bool invertCRC);
+ 855   void kernel_crc32_1word_aligned(Register crc, Register buf, Register len,
+ 856                           Register constants, Register barretConstants,
+ 857                           Register t0, Register t1, Register t2);
+ 858 
+ 859   void kernel_crc32_singleByte(Register crc, Register buf, Register len, Register table, Register tmp,
+ 860                                bool invertCRC);
+ 861   void kernel_crc32_singleByteReg(Register crc, Register val, Register table,
+ 862                                   bool invertCRC);
+ 863 
+<span class="new"> 864   // SHA-2 auxiliary functions and public interfaces</span>
+<span class="new"> 865  private:</span>
+<span class="new"> 866   void sha256_deque(const VectorRegister&amp; src,</span>
+<span class="new"> 867       const VectorRegister&amp; dst1, const VectorRegister&amp; dst2, const VectorRegister&amp; dst3);</span>
+<span class="new"> 868   void sha256_load_h_vec(const VectorRegister&amp; a, const VectorRegister&amp; b,</span>
+<span class="new"> 869       const VectorRegister&amp; c, const VectorRegister&amp; d, const VectorRegister&amp; e,</span>
+<span class="new"> 870       const VectorRegister&amp; f, const VectorRegister&amp; g, const VectorRegister&amp; h,</span>
+<span class="new"> 871       const Register&amp; hptr);</span>
+<span class="new"> 872   void sha256_round(const VectorRegister* hs, const int total_hs, int&amp; h_cnt, const VectorRegister&amp; kpw);</span>
+<span class="new"> 873   void sha256_load_w_plus_k_vec(const Register&amp; buf_in, const VectorRegister* ws,</span>
+<span class="new"> 874       const int total_ws, const Register&amp; k, const VectorRegister* kpws,</span>
+<span class="new"> 875       const int total_kpws);</span>
+<span class="new"> 876   void sha256_calc_4w(const VectorRegister&amp; w0, const VectorRegister&amp; w1,</span>
+<span class="new"> 877       const VectorRegister&amp; w2, const VectorRegister&amp; w3, const VectorRegister&amp; kpw0,</span>
+<span class="new"> 878       const VectorRegister&amp; kpw1, const VectorRegister&amp; kpw2, const VectorRegister&amp; kpw3,</span>
+<span class="new"> 879       const Register&amp; j, const Register&amp; k);</span>
+<span class="new"> 880   void sha256_update_sha_state(const VectorRegister&amp; a, const VectorRegister&amp; b,</span>
+<span class="new"> 881       const VectorRegister&amp; c, const VectorRegister&amp; d, const VectorRegister&amp; e,</span>
+<span class="new"> 882       const VectorRegister&amp; f, const VectorRegister&amp; g, const VectorRegister&amp; h,</span>
+<span class="new"> 883       const Register&amp; hptr);</span>
+<span class="new"> 884 </span>
+<span class="new"> 885   void sha512_load_w_vec(const Register&amp; buf_in, const VectorRegister* ws, const int total_ws);</span>
+<span class="new"> 886   void sha512_update_sha_state(const Register&amp; state, const VectorRegister* hs, const int total_hs);</span>
+<span class="new"> 887   void sha512_round(const VectorRegister* hs, const int total_hs, int&amp; h_cnt, const VectorRegister&amp; kpw);</span>
+<span class="new"> 888   void sha512_load_h_vec(const Register&amp; state, const VectorRegister* hs, const int total_hs);</span>
+<span class="new"> 889   void sha512_calc_2w(const VectorRegister&amp; w0, const VectorRegister&amp; w1,</span>
+<span class="new"> 890       const VectorRegister&amp; w2, const VectorRegister&amp; w3,</span>
+<span class="new"> 891       const VectorRegister&amp; w4, const VectorRegister&amp; w5,</span>
+<span class="new"> 892       const VectorRegister&amp; w6, const VectorRegister&amp; w7,</span>
+<span class="new"> 893       const VectorRegister&amp; kpw0, const VectorRegister&amp; kpw1, const Register&amp; j,</span>
+<span class="new"> 894       const VectorRegister&amp; vRb, const Register&amp; k);</span>
+<span class="new"> 895 </span>
+<span class="new"> 896  public:</span>
+<span class="new"> 897   void sha256(bool multi_block);</span>
+<span class="new"> 898   void sha512(bool multi_block);</span>
+<span class="new"> 899 </span>
+<span class="new"> 900 </span>
+ 901   //
+ 902   // Debugging
+ 903   //
+ 904 
+ 905   // assert on cr0
+ 906   void asm_assert(bool check_equal, const char* msg, int id);
+ 907   void asm_assert_eq(const char* msg, int id) { asm_assert(true, msg, id); }
+ 908   void asm_assert_ne(const char* msg, int id) { asm_assert(false, msg, id); }
+ 909 
+ 910  private:
+ 911   void asm_assert_mems_zero(bool check_equal, int size, int mem_offset, Register mem_base,
+ 912                             const char* msg, int id);
+ 913 
+ 914  public:
+ 915 
+ 916   void asm_assert_mem8_is_zero(int mem_offset, Register mem_base, const char* msg, int id) {
+ 917     asm_assert_mems_zero(true,  8, mem_offset, mem_base, msg, id);
+ 918   }
+ 919   void asm_assert_mem8_isnot_zero(int mem_offset, Register mem_base, const char* msg, int id) {
+ 920     asm_assert_mems_zero(false, 8, mem_offset, mem_base, msg, id);
+
+</pre><hr></hr>
+</pre></td>
+</tr></table>
+<center><a href='../../../../src/cpu/ppc/vm/assembler_ppc.inline.hpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/stubGenerator_ppc.cpp.sdiff.html' target='_top'>next &gt</a></center>
+</body></html>

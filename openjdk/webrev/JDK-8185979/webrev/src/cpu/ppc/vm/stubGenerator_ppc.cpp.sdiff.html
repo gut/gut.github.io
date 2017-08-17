@@ -1,0 +1,317 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk10-hotspot-hg Sdiff src/cpu/ppc/vm </title>
+</head><body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/macroAssembler_ppc.hpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/vm_version_ppc.cpp.sdiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/stubGenerator_ppc.cpp</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13437">13437</a> : Implement SHA256 and SHA512 intrinsics for PPC64
+
+Sample run reduced 6.5s run to 2.8s for SHA256.</pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+3078     __ vncipherlast    (vRet, vRet, vKey5);
+3079 
+3080     __ neg             (temp, to);
+3081     __ lvsr            (toPerm, temp);
+3082     __ vspltisb        (vTmp2, -1);
+3083     __ vxor            (vTmp1, vTmp1, vTmp1);
+3084     __ vperm           (vTmp2, vTmp2, vTmp1, toPerm);
+3085     __ vxor            (toPerm, toPerm, fSplt);
+3086     __ lvx             (vTmp1, to);
+3087     __ vperm           (vRet, vRet, vRet, toPerm);
+3088     __ vsel            (vTmp1, vTmp1, vRet, vTmp2);
+3089     __ lvx             (vTmp4, fifteen, to);
+3090     __ stvx            (vTmp1, to);
+3091     __ vsel            (vRet, vRet, vTmp4, vTmp2);
+3092     __ stvx            (vRet, fifteen, to);
+3093 
+3094     __ blr();
+3095      return start;
+3096   }
+3097 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3098   void generate_arraycopy_stubs() {
+3099     // Note: the disjoint stubs must be generated first, some of
+3100     // the conjoint stubs use them.
+3101 
+3102     // non-aligned disjoint versions
+3103     StubRoutines::_jbyte_disjoint_arraycopy       = generate_disjoint_byte_copy(false, "jbyte_disjoint_arraycopy");
+3104     StubRoutines::_jshort_disjoint_arraycopy      = generate_disjoint_short_copy(false, "jshort_disjoint_arraycopy");
+3105     StubRoutines::_jint_disjoint_arraycopy        = generate_disjoint_int_copy(false, "jint_disjoint_arraycopy");
+3106     StubRoutines::_jlong_disjoint_arraycopy       = generate_disjoint_long_copy(false, "jlong_disjoint_arraycopy");
+3107     StubRoutines::_oop_disjoint_arraycopy         = generate_disjoint_oop_copy(false, "oop_disjoint_arraycopy", false);
+3108     StubRoutines::_oop_disjoint_arraycopy_uninit  = generate_disjoint_oop_copy(false, "oop_disjoint_arraycopy_uninit", true);
+3109 
+3110     // aligned disjoint versions
+3111     StubRoutines::_arrayof_jbyte_disjoint_arraycopy      = generate_disjoint_byte_copy(true, "arrayof_jbyte_disjoint_arraycopy");
+3112     StubRoutines::_arrayof_jshort_disjoint_arraycopy     = generate_disjoint_short_copy(true, "arrayof_jshort_disjoint_arraycopy");
+3113     StubRoutines::_arrayof_jint_disjoint_arraycopy       = generate_disjoint_int_copy(true, "arrayof_jint_disjoint_arraycopy");
+3114     StubRoutines::_arrayof_jlong_disjoint_arraycopy      = generate_disjoint_long_copy(true, "arrayof_jlong_disjoint_arraycopy");
+3115     StubRoutines::_arrayof_oop_disjoint_arraycopy        = generate_disjoint_oop_copy(true, "arrayof_oop_disjoint_arraycopy", false);
+3116     StubRoutines::_arrayof_oop_disjoint_arraycopy_uninit = generate_disjoint_oop_copy(true, "oop_disjoint_arraycopy_uninit", true);
+3117 
+
+</pre><hr></hr><pre>
+3497 #ifdef COMPILER2
+3498     if (UseMultiplyToLenIntrinsic) {
+3499       StubRoutines::_multiplyToLen = generate_multiplyToLen();
+3500     }
+3501 #endif
+3502 
+3503     if (UseMontgomeryMultiplyIntrinsic) {
+3504       StubRoutines::_montgomeryMultiply
+3505         = CAST_FROM_FN_PTR(address, SharedRuntime::montgomery_multiply);
+3506     }
+3507     if (UseMontgomerySquareIntrinsic) {
+3508       StubRoutines::_montgomerySquare
+3509         = CAST_FROM_FN_PTR(address, SharedRuntime::montgomery_square);
+3510     }
+3511 
+3512     if (UseAESIntrinsics) {
+3513       StubRoutines::_aescrypt_encryptBlock = generate_aescrypt_encryptBlock();
+3514       StubRoutines::_aescrypt_decryptBlock = generate_aescrypt_decryptBlock();
+3515     }
+3516 
+
+
+
+
+
+
+
+
+3517   }
+3518 
+3519  public:
+3520   StubGenerator(CodeBuffer* code, bool all) : StubCodeGenerator(code) {
+3521     // replace the standard masm with a special one:
+3522     _masm = new MacroAssembler(code);
+3523     if (all) {
+3524       generate_all();
+3525     } else {
+3526       generate_initial();
+3527     }
+3528   }
+3529 };
+3530 
+3531 void StubGenerator_generate(CodeBuffer* code, bool all) {
+3532   StubGenerator g(code, all);
+3533 }
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+3078     __ vncipherlast    (vRet, vRet, vKey5);
+3079 
+3080     __ neg             (temp, to);
+3081     __ lvsr            (toPerm, temp);
+3082     __ vspltisb        (vTmp2, -1);
+3083     __ vxor            (vTmp1, vTmp1, vTmp1);
+3084     __ vperm           (vTmp2, vTmp2, vTmp1, toPerm);
+3085     __ vxor            (toPerm, toPerm, fSplt);
+3086     __ lvx             (vTmp1, to);
+3087     __ vperm           (vRet, vRet, vRet, toPerm);
+3088     __ vsel            (vTmp1, vTmp1, vRet, vTmp2);
+3089     __ lvx             (vTmp4, fifteen, to);
+3090     __ stvx            (vTmp1, to);
+3091     __ vsel            (vRet, vRet, vTmp4, vTmp2);
+3092     __ stvx            (vRet, fifteen, to);
+3093 
+3094     __ blr();
+3095      return start;
+3096   }
+3097 
+<span class="new">3098   address generate_sha256_implCompress(bool multi_block, const char *name) {</span>
+<span class="new">3099     assert(UseSHA, "need SHA instructions");</span>
+<span class="new">3100     StubCodeMark mark(this, "StubRoutines", name);</span>
+<span class="new">3101     address start = __ function_entry();</span>
+<span class="new">3102 </span>
+<span class="new">3103     __ sha256 (multi_block);</span>
+<span class="new">3104 </span>
+<span class="new">3105     __ blr();</span>
+<span class="new">3106     return start;</span>
+<span class="new">3107   }</span>
+<span class="new">3108 </span>
+<span class="new">3109   address generate_sha512_implCompress(bool multi_block, const char *name) {</span>
+<span class="new">3110     assert(UseSHA, "need SHA instructions");</span>
+<span class="new">3111     StubCodeMark mark(this, "StubRoutines", name);</span>
+<span class="new">3112     address start = __ function_entry();</span>
+<span class="new">3113 </span>
+<span class="new">3114     __ sha512 (multi_block);</span>
+<span class="new">3115 </span>
+<span class="new">3116     __ blr();</span>
+<span class="new">3117     return start;</span>
+<span class="new">3118   }</span>
+<span class="new">3119 </span>
+3120   void generate_arraycopy_stubs() {
+3121     // Note: the disjoint stubs must be generated first, some of
+3122     // the conjoint stubs use them.
+3123 
+3124     // non-aligned disjoint versions
+3125     StubRoutines::_jbyte_disjoint_arraycopy       = generate_disjoint_byte_copy(false, "jbyte_disjoint_arraycopy");
+3126     StubRoutines::_jshort_disjoint_arraycopy      = generate_disjoint_short_copy(false, "jshort_disjoint_arraycopy");
+3127     StubRoutines::_jint_disjoint_arraycopy        = generate_disjoint_int_copy(false, "jint_disjoint_arraycopy");
+3128     StubRoutines::_jlong_disjoint_arraycopy       = generate_disjoint_long_copy(false, "jlong_disjoint_arraycopy");
+3129     StubRoutines::_oop_disjoint_arraycopy         = generate_disjoint_oop_copy(false, "oop_disjoint_arraycopy", false);
+3130     StubRoutines::_oop_disjoint_arraycopy_uninit  = generate_disjoint_oop_copy(false, "oop_disjoint_arraycopy_uninit", true);
+3131 
+3132     // aligned disjoint versions
+3133     StubRoutines::_arrayof_jbyte_disjoint_arraycopy      = generate_disjoint_byte_copy(true, "arrayof_jbyte_disjoint_arraycopy");
+3134     StubRoutines::_arrayof_jshort_disjoint_arraycopy     = generate_disjoint_short_copy(true, "arrayof_jshort_disjoint_arraycopy");
+3135     StubRoutines::_arrayof_jint_disjoint_arraycopy       = generate_disjoint_int_copy(true, "arrayof_jint_disjoint_arraycopy");
+3136     StubRoutines::_arrayof_jlong_disjoint_arraycopy      = generate_disjoint_long_copy(true, "arrayof_jlong_disjoint_arraycopy");
+3137     StubRoutines::_arrayof_oop_disjoint_arraycopy        = generate_disjoint_oop_copy(true, "arrayof_oop_disjoint_arraycopy", false);
+3138     StubRoutines::_arrayof_oop_disjoint_arraycopy_uninit = generate_disjoint_oop_copy(true, "oop_disjoint_arraycopy_uninit", true);
+3139 
+
+</pre><hr></hr><pre>
+3519 #ifdef COMPILER2
+3520     if (UseMultiplyToLenIntrinsic) {
+3521       StubRoutines::_multiplyToLen = generate_multiplyToLen();
+3522     }
+3523 #endif
+3524 
+3525     if (UseMontgomeryMultiplyIntrinsic) {
+3526       StubRoutines::_montgomeryMultiply
+3527         = CAST_FROM_FN_PTR(address, SharedRuntime::montgomery_multiply);
+3528     }
+3529     if (UseMontgomerySquareIntrinsic) {
+3530       StubRoutines::_montgomerySquare
+3531         = CAST_FROM_FN_PTR(address, SharedRuntime::montgomery_square);
+3532     }
+3533 
+3534     if (UseAESIntrinsics) {
+3535       StubRoutines::_aescrypt_encryptBlock = generate_aescrypt_encryptBlock();
+3536       StubRoutines::_aescrypt_decryptBlock = generate_aescrypt_decryptBlock();
+3537     }
+3538 
+<span class="new">3539     if (UseSHA256Intrinsics) {</span>
+<span class="new">3540       StubRoutines::_sha256_implCompress   = generate_sha256_implCompress(false, "sha256_implCompress");</span>
+<span class="new">3541       StubRoutines::_sha256_implCompressMB = generate_sha256_implCompress(true,  "sha256_implCompressMB");</span>
+<span class="new">3542     }</span>
+<span class="new">3543     if (UseSHA512Intrinsics) {</span>
+<span class="new">3544       StubRoutines::_sha512_implCompress   = generate_sha512_implCompress(false, "sha512_implCompress");</span>
+<span class="new">3545       StubRoutines::_sha512_implCompressMB = generate_sha512_implCompress(true, "sha512_implCompressMB");</span>
+<span class="new">3546     }</span>
+3547   }
+3548 
+3549  public:
+3550   StubGenerator(CodeBuffer* code, bool all) : StubCodeGenerator(code) {
+3551     // replace the standard masm with a special one:
+3552     _masm = new MacroAssembler(code);
+3553     if (all) {
+3554       generate_all();
+3555     } else {
+3556       generate_initial();
+3557     }
+3558   }
+3559 };
+3560 
+3561 void StubGenerator_generate(CodeBuffer* code, bool all) {
+3562   StubGenerator g(code, all);
+3563 }
+</pre></td>
+</tr></table>
+<center><a href='../../../../src/cpu/ppc/vm/macroAssembler_ppc.hpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/vm_version_ppc.cpp.sdiff.html' target='_top'>next &gt</a></center>
+</body></html>
