@@ -1,0 +1,12 @@
+--- old/test/compiler/intrinsics/sha/cli/testcases/GenericTestCaseForOtherCPU.java	2017-08-25 12:46:13.539928014 -0300
++++ new/test/compiler/intrinsics/sha/cli/testcases/GenericTestCaseForOtherCPU.java	2017-08-25 12:46:13.415928014 -0300
+@@ -42,7 +42,8 @@
+                               new OrPredicate(Platform::isAArch64,
+                               new OrPredicate(Platform::isS390x,
+                               new OrPredicate(Platform::isSparc,
+-                              new OrPredicate(Platform::isX64, Platform::isX86))))));
++                              new OrPredicate(Platform::isPPC,
++                              new OrPredicate(Platform::isX64, Platform::isX86)))))));
+     }
+ 
+     @Override
