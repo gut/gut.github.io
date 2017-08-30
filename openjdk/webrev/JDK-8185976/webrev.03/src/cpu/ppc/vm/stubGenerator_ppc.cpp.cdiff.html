@@ -1,0 +1,381 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk10-hotspot-hg Cdiff src/cpu/ppc/vm/stubGenerator_ppc.cpp</title>
+</head>
+<body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/macroAssembler_ppc.hpp.cdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/vm_version_ppc.cpp.cdiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/stubGenerator_ppc.cpp</h2>
+        <a class="print" href="javascript:print()">Print this page</a>
+<pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13392">13392</a> : Clear int to long as Martin suggested
+
+http://mail.openjdk.java.net/pipermail/hotspot-compiler-dev/2017-August/<a href="https://bugs.openjdk.java.net/browse/JDK-027009">027009</a>.html</pre>
+        <pre>
+<hr /><span class="oldmarker">*** 3304,3313 ****</span>
+<span class="newmarker">--- 3304,3571 ----</span>
+        __ blr();
+  
+        BLOCK_COMMENT("} Stub body");
+    }
+  
+<span class="new">+   /**</span>
+<span class="new">+   *  Arguments:</span>
+<span class="new">+   *</span>
+<span class="new">+   *  Input:</span>
+<span class="new">+   *   R3_ARG1    - out address</span>
+<span class="new">+   *   R4_ARG2    - in address</span>
+<span class="new">+   *   R5_ARG3    - offset</span>
+<span class="new">+   *   R6_ARG4    - len</span>
+<span class="new">+   *   R7_ARG5    - k</span>
+<span class="new">+   *  Output:</span>
+<span class="new">+   *   R3_RET     - carry</span>
+<span class="new">+   */</span>
+<span class="new">+   address generate_mulAdd() {</span>
+<span class="new">+     __ align(CodeEntryAlignment);</span>
+<span class="new">+     StubCodeMark mark(this, "StubRoutines", "mulAdd");</span>
+<span class="new">+ </span>
+<span class="new">+     address start = __ function_entry();</span>
+<span class="new">+ </span>
+<span class="new">+     // C2 does not sign extend signed parameters to full 64 bits registers:</span>
+<span class="new">+     __ rldic (R5_ARG3, R5_ARG3, 2, 32);  // always positive</span>
+<span class="new">+     __ clrldi(R6_ARG4, R6_ARG4, 32);     // force zero bits on higher word</span>
+<span class="new">+     __ clrldi(R7_ARG5, R7_ARG5, 32);     // force zero bits on higher word</span>
+<span class="new">+ </span>
+<span class="new">+     __ muladd(R3_ARG1, R4_ARG2, R5_ARG3, R6_ARG4, R7_ARG5, R8, R9, R10);</span>
+<span class="new">+ </span>
+<span class="new">+     // Moves output carry to return register</span>
+<span class="new">+     __ mr    (R3_RET,  R10);</span>
+<span class="new">+ </span>
+<span class="new">+     __ blr();</span>
+<span class="new">+ </span>
+<span class="new">+     return start;</span>
+<span class="new">+   }</span>
+<span class="new">+ </span>
+<span class="new">+   /**</span>
+<span class="new">+   *  Arguments:</span>
+<span class="new">+   *</span>
+<span class="new">+   *  Input:</span>
+<span class="new">+   *   R3_ARG1    - in address</span>
+<span class="new">+   *   R4_ARG2    - in length</span>
+<span class="new">+   *   R5_ARG3    - out address</span>
+<span class="new">+   *   R6_ARG4    - out length</span>
+<span class="new">+   */</span>
+<span class="new">+   address generate_squareToLen() {</span>
+<span class="new">+     __ align(CodeEntryAlignment);</span>
+<span class="new">+     StubCodeMark mark(this, "StubRoutines", "squareToLen");</span>
+<span class="new">+ </span>
+<span class="new">+     address start = __ function_entry();</span>
+<span class="new">+ </span>
+<span class="new">+     // args - higher word is cleaned (unsignedly) due to int to long casting</span>
+<span class="new">+     const Register in        = R3_ARG1;</span>
+<span class="new">+     const Register in_len    = R4_ARG2;</span>
+<span class="new">+     __ clrldi(in_len, in_len, 32);</span>
+<span class="new">+     const Register out       = R5_ARG3;</span>
+<span class="new">+     const Register out_len   = R6_ARG4;</span>
+<span class="new">+     __ clrldi(out_len, out_len, 32);</span>
+<span class="new">+ </span>
+<span class="new">+     // output</span>
+<span class="new">+     const Register ret       = R3_RET;</span>
+<span class="new">+ </span>
+<span class="new">+     // temporaries</span>
+<span class="new">+     const Register lplw_s    = R7;</span>
+<span class="new">+     const Register in_aux    = R8;</span>
+<span class="new">+     const Register out_aux   = R9;</span>
+<span class="new">+     const Register piece     = R10;</span>
+<span class="new">+     const Register product   = R14;</span>
+<span class="new">+     const Register lplw      = R15;</span>
+<span class="new">+     const Register i_minus1  = R16;</span>
+<span class="new">+     const Register carry     = R17;</span>
+<span class="new">+     const Register offset    = R18;</span>
+<span class="new">+     const Register off_aux   = R19;</span>
+<span class="new">+     const Register t         = R20;</span>
+<span class="new">+     const Register mlen      = R21;</span>
+<span class="new">+     const Register len       = R22;</span>
+<span class="new">+     const Register a         = R23;</span>
+<span class="new">+     const Register b         = R24;</span>
+<span class="new">+     const Register i         = R25;</span>
+<span class="new">+     const Register c         = R26;</span>
+<span class="new">+     const Register cs        = R27;</span>
+<span class="new">+ </span>
+<span class="new">+     // Labels</span>
+<span class="new">+     Label SKIP_LSHIFT, SKIP_DIAGONAL_SUM, SKIP_ADDONE, SKIP_MULADD, SKIP_LOOP_SQUARE;</span>
+<span class="new">+     Label LOOP_LSHIFT, LOOP_DIAGONAL_SUM, LOOP_ADDONE, LOOP_MULADD, LOOP_SQUARE;</span>
+<span class="new">+ </span>
+<span class="new">+     // Save non-volatile regs (frameless).</span>
+<span class="new">+     int current_offs = -8;</span>
+<span class="new">+     __ std(R28, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ std(R27, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ std(R26, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ std(R25, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ std(R24, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ std(R23, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ std(R22, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ std(R21, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ std(R20, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ std(R19, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ std(R18, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ std(R17, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ std(R16, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ std(R15, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ std(R14, current_offs, R1_SP);</span>
+<span class="new">+ </span>
+<span class="new">+     // Store the squares, right shifted one bit (i.e., divided by 2)</span>
+<span class="new">+     __ subi   (out_aux,   out,       8);</span>
+<span class="new">+     __ subi   (in_aux,    in,        4);</span>
+<span class="new">+     __ cmpwi  (CCR0,      in_len,    0);</span>
+<span class="new">+     // Initialize lplw outside of the loop</span>
+<span class="new">+     __ xorr   (lplw,      lplw,      lplw);</span>
+<span class="new">+     __ ble    (CCR0,      SKIP_LOOP_SQUARE);    // in_len &lt;= 0</span>
+<span class="new">+     __ mtctr  (in_len);</span>
+<span class="new">+ </span>
+<span class="new">+     __ bind(LOOP_SQUARE);</span>
+<span class="new">+     __ lwzu   (piece,     4,         in_aux);</span>
+<span class="new">+     __ mulld  (product,   piece,     piece);</span>
+<span class="new">+     // shift left 63 bits and only keep the MSB</span>
+<span class="new">+     __ rldic  (lplw_s,    lplw,      63, 0);</span>
+<span class="new">+     __ mr     (lplw,      product);</span>
+<span class="new">+     // shift right 1 bit without sign extension</span>
+<span class="new">+     __ srdi   (product,   product,   1);</span>
+<span class="new">+     // join them to the same register and store it as Little Endian</span>
+<span class="new">+     __ orr    (product,   lplw_s,    product);</span>
+<span class="new">+     __ rldicl (product,   product,   32, 0);</span>
+<span class="new">+     __ stdu   (product,   8,         out_aux);</span>
+<span class="new">+     __ bdnz   (LOOP_SQUARE);</span>
+<span class="new">+ </span>
+<span class="new">+     __ bind(SKIP_LOOP_SQUARE);</span>
+<span class="new">+ </span>
+<span class="new">+     // Add in off-diagonal sums</span>
+<span class="new">+     __ cmpwi  (CCR0,      in_len,    0);</span>
+<span class="new">+     __ ble    (CCR0,      SKIP_DIAGONAL_SUM);</span>
+<span class="new">+     // Avoid CTR usage here in order to use it at mulAdd</span>
+<span class="new">+     __ subi   (i_minus1,  in_len,    1);</span>
+<span class="new">+     __ li     (offset,    4);</span>
+<span class="new">+ </span>
+<span class="new">+     __ bind(LOOP_DIAGONAL_SUM);</span>
+<span class="new">+ </span>
+<span class="new">+     __ sldi   (off_aux,   out_len,   2);</span>
+<span class="new">+     __ sub    (off_aux,   off_aux,   offset);</span>
+<span class="new">+ </span>
+<span class="new">+     __ mr     (len,       i_minus1);</span>
+<span class="new">+     __ sldi   (mlen,      i_minus1,  2);</span>
+<span class="new">+     __ lwzx   (t,         in,        mlen);</span>
+<span class="new">+ </span>
+<span class="new">+     __ muladd (out, in, off_aux, len, t, a, b, carry);</span>
+<span class="new">+ </span>
+<span class="new">+     // begin&lt;addOne&gt;</span>
+<span class="new">+     // off_aux = out_len*4 - 4 - mlen - offset*4 - 4;</span>
+<span class="new">+     __ addi   (mlen,      mlen,      4);</span>
+<span class="new">+     __ sldi   (a,         out_len,   2);</span>
+<span class="new">+     __ subi   (a,         a,         4);</span>
+<span class="new">+     __ sub    (a,         a,         mlen);</span>
+<span class="new">+     __ subi   (off_aux,   offset,    4);</span>
+<span class="new">+     __ sub    (off_aux,   a,         off_aux);</span>
+<span class="new">+ </span>
+<span class="new">+     __ lwzx   (b,         off_aux,   out);</span>
+<span class="new">+     __ add    (b,         b,         carry);</span>
+<span class="new">+     __ stwx   (b,         off_aux,   out);</span>
+<span class="new">+ </span>
+<span class="new">+     // if (((uint64_t)s &gt;&gt; 32) != 0) {</span>
+<span class="new">+     __ srdi_  (a,         b,         32);</span>
+<span class="new">+     __ beq    (CCR0,      SKIP_ADDONE);</span>
+<span class="new">+ </span>
+<span class="new">+     // while (--mlen &gt;= 0) {</span>
+<span class="new">+     __ bind(LOOP_ADDONE);</span>
+<span class="new">+     __ subi   (mlen,      mlen,      4);</span>
+<span class="new">+     __ cmpwi  (CCR0,      mlen,      0);</span>
+<span class="new">+     __ beq    (CCR0,      SKIP_ADDONE);</span>
+<span class="new">+ </span>
+<span class="new">+     // if (--offset_aux &lt; 0) { // Carry out of number</span>
+<span class="new">+     __ subi   (off_aux,   off_aux,   4);</span>
+<span class="new">+     __ cmpwi  (CCR0,      off_aux,   0);</span>
+<span class="new">+     __ blt    (CCR0,      SKIP_ADDONE);</span>
+<span class="new">+ </span>
+<span class="new">+     // } else {</span>
+<span class="new">+     __ lwzx   (b,         off_aux,   out);</span>
+<span class="new">+     __ addi   (b,         b,         1);</span>
+<span class="new">+     __ stwx   (b,         off_aux,   out);</span>
+<span class="new">+     __ cmpwi  (CCR0,      b,         0);</span>
+<span class="new">+     __ bne    (CCR0,      SKIP_ADDONE);</span>
+<span class="new">+     __ b      (LOOP_ADDONE);</span>
+<span class="new">+ </span>
+<span class="new">+     __ bind(SKIP_ADDONE);</span>
+<span class="new">+     // } } } end&lt;addOne&gt;</span>
+<span class="new">+ </span>
+<span class="new">+     __ addi   (offset,    offset,    8);</span>
+<span class="new">+     __ subi   (i_minus1,  i_minus1,  1);</span>
+<span class="new">+     __ cmpwi  (CCR0,      i_minus1,  0);</span>
+<span class="new">+     __ bge    (CCR0,      LOOP_DIAGONAL_SUM);</span>
+<span class="new">+ </span>
+<span class="new">+     __ bind(SKIP_DIAGONAL_SUM);</span>
+<span class="new">+ </span>
+<span class="new">+     // Shift back up and set low bit</span>
+<span class="new">+     // Shifts 1 bit left up to len positions. Assumes no leading zeros</span>
+<span class="new">+     // begin&lt;primitiveLeftShift&gt;</span>
+<span class="new">+     __ cmpwi  (CCR0,      out_len,   0);</span>
+<span class="new">+     __ ble    (CCR0,      SKIP_LSHIFT);</span>
+<span class="new">+     __ li     (i,         0);</span>
+<span class="new">+     __ lwz    (c,         0,         out);</span>
+<span class="new">+     __ subi   (b,         out_len,   1);</span>
+<span class="new">+     __ mtctr  (b);</span>
+<span class="new">+ </span>
+<span class="new">+     __ bind(LOOP_LSHIFT);</span>
+<span class="new">+     __ mr     (b,         c);</span>
+<span class="new">+     __ addi   (cs,        i,         4);</span>
+<span class="new">+     __ lwzx   (c,         out,       cs);</span>
+<span class="new">+ </span>
+<span class="new">+     __ sldi   (b,         b,         1);</span>
+<span class="new">+     __ srwi   (cs,        c,         31);</span>
+<span class="new">+     __ orr    (b,         b,         cs);</span>
+<span class="new">+     __ stwx   (b,         i,         out);</span>
+<span class="new">+ </span>
+<span class="new">+     __ addi   (i,         i,         4);</span>
+<span class="new">+     __ bdnz   (LOOP_LSHIFT);</span>
+<span class="new">+ </span>
+<span class="new">+     __ sldi   (c,         out_len,   2);</span>
+<span class="new">+     __ subi   (c,         c,         4);</span>
+<span class="new">+     __ lwzx   (b,         out,       c);</span>
+<span class="new">+     __ sldi   (b,         b,         1);</span>
+<span class="new">+     __ stwx   (b,         out,       c);</span>
+<span class="new">+ </span>
+<span class="new">+     __ bind(SKIP_LSHIFT);</span>
+<span class="new">+     // end&lt;primitiveLeftShift&gt;</span>
+<span class="new">+ </span>
+<span class="new">+     // Set low bit</span>
+<span class="new">+     __ sldi   (i,         in_len,    2);</span>
+<span class="new">+     __ subi   (i,         i,         4);</span>
+<span class="new">+     __ lwzx   (i,         in,        i);</span>
+<span class="new">+     __ sldi   (c,         out_len,   2);</span>
+<span class="new">+     __ subi   (c,         c,         4);</span>
+<span class="new">+     __ lwzx   (b,         out,       c);</span>
+<span class="new">+ </span>
+<span class="new">+     __ andi   (i,         i,         1);</span>
+<span class="new">+     __ orr    (i,         b,         i);</span>
+<span class="new">+ </span>
+<span class="new">+     __ stwx   (i,         out,       c);</span>
+<span class="new">+ </span>
+<span class="new">+     // Restore non-volatile regs.</span>
+<span class="new">+     current_offs = -8;</span>
+<span class="new">+     __ ld(R28, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ ld(R27, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ ld(R26, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ ld(R25, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ ld(R24, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ ld(R23, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ ld(R22, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ ld(R21, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ ld(R20, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ ld(R19, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ ld(R18, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ ld(R17, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ ld(R16, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ ld(R15, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">+     __ ld(R14, current_offs, R1_SP);</span>
+<span class="new">+ </span>
+<span class="new">+     __ mr(ret, out);</span>
+<span class="new">+     __ blr();</span>
+<span class="new">+ </span>
+<span class="new">+     return start;</span>
+<span class="new">+   }</span>
+  
+    /**
+     * Arguments:
+     *
+     * Inputs:
+<hr /><span class="oldmarker">*** 3498,3507 ****</span>
+<span class="newmarker">--- 3756,3771 ----</span>
+      if (UseMultiplyToLenIntrinsic) {
+        StubRoutines::_multiplyToLen = generate_multiplyToLen();
+      }
+  #endif
+  
+<span class="new">+     if (UseSquareToLenIntrinsic) {</span>
+<span class="new">+       StubRoutines::_squareToLen = generate_squareToLen();</span>
+<span class="new">+     }</span>
+<span class="new">+     if (UseMulAddIntrinsic) {</span>
+<span class="new">+       StubRoutines::_mulAdd = generate_mulAdd();</span>
+<span class="new">+     }</span>
+      if (UseMontgomeryMultiplyIntrinsic) {
+        StubRoutines::_montgomeryMultiply
+          = CAST_FROM_FN_PTR(address, SharedRuntime::montgomery_multiply);
+      }
+      if (UseMontgomerySquareIntrinsic) {
+</pre>
+<center><a href='../../../../src/cpu/ppc/vm/macroAssembler_ppc.hpp.cdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/vm_version_ppc.cpp.cdiff.html' target='_top'>next &gt</a></center>
+</body></html>
+
