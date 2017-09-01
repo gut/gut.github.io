@@ -1,0 +1,797 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk10-hotspot-hg Sdiff src/cpu/ppc/vm </title>
+</head><body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/macroAssembler_ppc.hpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/vm_version_ppc.cpp.sdiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/stubGenerator_ppc.cpp</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13393">13393</a> : Enable big endian as Martin verified
+
+http://mail.openjdk.java.net/pipermail/hotspot-compiler-dev/2017-September/<a href="https://bugs.openjdk.java.net/browse/JDK-027027">027027</a>.html</pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+3289       const Register t0      = R2;
+3290       const Register t1      = R7;
+3291       const Register t2      = R8;
+3292       const Register t3      = R9;
+3293       const Register tc0     = R10;
+3294       const Register tc1     = R11;
+3295       const Register tc2     = R12;
+3296 
+3297       BLOCK_COMMENT("Stub body {");
+3298       assert_different_registers(crc, data, dataLen, table);
+3299 
+3300       __ kernel_crc32_1word(crc, data, dataLen, table, t0, t1, t2, t3, tc0, tc1, tc2, table, invertCRC);
+3301 
+3302       BLOCK_COMMENT("return");
+3303       __ mr_if_needed(R3_RET, crc);      // Updated crc is function result. No copying required (R3_ARG1 == R3_RET).
+3304       __ blr();
+3305 
+3306       BLOCK_COMMENT("} Stub body");
+3307   }
+3308 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3309 
+3310   /**
+3311    * Arguments:
+3312    *
+3313    * Inputs:
+3314    *   R3_ARG1    - int   crc
+3315    *   R4_ARG2    - byte* buf
+3316    *   R5_ARG3    - int   length (of buffer)
+3317    *
+3318    * scratch:
+3319    *   R2, R6-R12
+3320    *
+3321    * Ouput:
+3322    *   R3_RET     - int   crc result
+3323    */
+3324   // Compute CRC32 function.
+3325   address generate_CRC32_updateBytes(const char* name) {
+3326     __ align(CodeEntryAlignment);
+3327     StubCodeMark mark(this, "StubRoutines", name);
+3328     address start = __ function_entry();  // Remember stub start address (is rtn value).
+
+</pre><hr></hr><pre>
+3483     // support for verify_oop (must happen after universe_init)
+3484     StubRoutines::_verify_oop_subroutine_entry             = generate_verify_oop();
+3485 
+3486     // arraycopy stubs used by compilers
+3487     generate_arraycopy_stubs();
+3488 
+3489     // Safefetch stubs.
+3490     generate_safefetch("SafeFetch32", sizeof(int),     &amp;StubRoutines::_safefetch32_entry,
+3491                                                        &amp;StubRoutines::_safefetch32_fault_pc,
+3492                                                        &amp;StubRoutines::_safefetch32_continuation_pc);
+3493     generate_safefetch("SafeFetchN", sizeof(intptr_t), &amp;StubRoutines::_safefetchN_entry,
+3494                                                        &amp;StubRoutines::_safefetchN_fault_pc,
+3495                                                        &amp;StubRoutines::_safefetchN_continuation_pc);
+3496 
+3497 #ifdef COMPILER2
+3498     if (UseMultiplyToLenIntrinsic) {
+3499       StubRoutines::_multiplyToLen = generate_multiplyToLen();
+3500     }
+3501 #endif
+3502 
+
+
+
+
+
+
+3503     if (UseMontgomeryMultiplyIntrinsic) {
+3504       StubRoutines::_montgomeryMultiply
+3505         = CAST_FROM_FN_PTR(address, SharedRuntime::montgomery_multiply);
+3506     }
+3507     if (UseMontgomerySquareIntrinsic) {
+3508       StubRoutines::_montgomerySquare
+3509         = CAST_FROM_FN_PTR(address, SharedRuntime::montgomery_square);
+3510     }
+3511 
+3512     if (UseAESIntrinsics) {
+3513       StubRoutines::_aescrypt_encryptBlock = generate_aescrypt_encryptBlock();
+3514       StubRoutines::_aescrypt_decryptBlock = generate_aescrypt_decryptBlock();
+3515     }
+3516 
+3517   }
+3518 
+3519  public:
+3520   StubGenerator(CodeBuffer* code, bool all) : StubCodeGenerator(code) {
+3521     // replace the standard masm with a special one:
+3522     _masm = new MacroAssembler(code);
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+3289       const Register t0      = R2;
+3290       const Register t1      = R7;
+3291       const Register t2      = R8;
+3292       const Register t3      = R9;
+3293       const Register tc0     = R10;
+3294       const Register tc1     = R11;
+3295       const Register tc2     = R12;
+3296 
+3297       BLOCK_COMMENT("Stub body {");
+3298       assert_different_registers(crc, data, dataLen, table);
+3299 
+3300       __ kernel_crc32_1word(crc, data, dataLen, table, t0, t1, t2, t3, tc0, tc1, tc2, table, invertCRC);
+3301 
+3302       BLOCK_COMMENT("return");
+3303       __ mr_if_needed(R3_RET, crc);      // Updated crc is function result. No copying required (R3_ARG1 == R3_RET).
+3304       __ blr();
+3305 
+3306       BLOCK_COMMENT("} Stub body");
+3307   }
+3308 
+<span class="new">3309   /**</span>
+<span class="new">3310   *  Arguments:</span>
+<span class="new">3311   *</span>
+<span class="new">3312   *  Input:</span>
+<span class="new">3313   *   R3_ARG1    - out address</span>
+<span class="new">3314   *   R4_ARG2    - in address</span>
+<span class="new">3315   *   R5_ARG3    - offset</span>
+<span class="new">3316   *   R6_ARG4    - len</span>
+<span class="new">3317   *   R7_ARG5    - k</span>
+<span class="new">3318   *  Output:</span>
+<span class="new">3319   *   R3_RET     - carry</span>
+<span class="new">3320   */</span>
+<span class="new">3321   address generate_mulAdd() {</span>
+<span class="new">3322     __ align(CodeEntryAlignment);</span>
+<span class="new">3323     StubCodeMark mark(this, "StubRoutines", "mulAdd");</span>
+<span class="new">3324 </span>
+<span class="new">3325     address start = __ function_entry();</span>
+<span class="new">3326 </span>
+<span class="new">3327     // C2 does not sign extend signed parameters to full 64 bits registers:</span>
+<span class="new">3328     __ rldic (R5_ARG3, R5_ARG3, 2, 32);  // always positive</span>
+<span class="new">3329     __ clrldi(R6_ARG4, R6_ARG4, 32);     // force zero bits on higher word</span>
+<span class="new">3330     __ clrldi(R7_ARG5, R7_ARG5, 32);     // force zero bits on higher word</span>
+<span class="new">3331 </span>
+<span class="new">3332     __ muladd(R3_ARG1, R4_ARG2, R5_ARG3, R6_ARG4, R7_ARG5, R8, R9, R10);</span>
+<span class="new">3333 </span>
+<span class="new">3334     // Moves output carry to return register</span>
+<span class="new">3335     __ mr    (R3_RET,  R10);</span>
+<span class="new">3336 </span>
+<span class="new">3337     __ blr();</span>
+<span class="new">3338 </span>
+<span class="new">3339     return start;</span>
+<span class="new">3340   }</span>
+<span class="new">3341 </span>
+<span class="new">3342   /**</span>
+<span class="new">3343   *  Arguments:</span>
+<span class="new">3344   *</span>
+<span class="new">3345   *  Input:</span>
+<span class="new">3346   *   R3_ARG1    - in address</span>
+<span class="new">3347   *   R4_ARG2    - in length</span>
+<span class="new">3348   *   R5_ARG3    - out address</span>
+<span class="new">3349   *   R6_ARG4    - out length</span>
+<span class="new">3350   */</span>
+<span class="new">3351   address generate_squareToLen() {</span>
+<span class="new">3352     __ align(CodeEntryAlignment);</span>
+<span class="new">3353     StubCodeMark mark(this, "StubRoutines", "squareToLen");</span>
+<span class="new">3354 </span>
+<span class="new">3355     address start = __ function_entry();</span>
+<span class="new">3356 </span>
+<span class="new">3357     // args - higher word is cleaned (unsignedly) due to int to long casting</span>
+<span class="new">3358     const Register in        = R3_ARG1;</span>
+<span class="new">3359     const Register in_len    = R4_ARG2;</span>
+<span class="new">3360     __ clrldi(in_len, in_len, 32);</span>
+<span class="new">3361     const Register out       = R5_ARG3;</span>
+<span class="new">3362     const Register out_len   = R6_ARG4;</span>
+<span class="new">3363     __ clrldi(out_len, out_len, 32);</span>
+<span class="new">3364 </span>
+<span class="new">3365     // output</span>
+<span class="new">3366     const Register ret       = R3_RET;</span>
+<span class="new">3367 </span>
+<span class="new">3368     // temporaries</span>
+<span class="new">3369     const Register lplw_s    = R7;</span>
+<span class="new">3370     const Register in_aux    = R8;</span>
+<span class="new">3371     const Register out_aux   = R9;</span>
+<span class="new">3372     const Register piece     = R10;</span>
+<span class="new">3373     const Register product   = R14;</span>
+<span class="new">3374     const Register lplw      = R15;</span>
+<span class="new">3375     const Register i_minus1  = R16;</span>
+<span class="new">3376     const Register carry     = R17;</span>
+<span class="new">3377     const Register offset    = R18;</span>
+<span class="new">3378     const Register off_aux   = R19;</span>
+<span class="new">3379     const Register t         = R20;</span>
+<span class="new">3380     const Register mlen      = R21;</span>
+<span class="new">3381     const Register len       = R22;</span>
+<span class="new">3382     const Register a         = R23;</span>
+<span class="new">3383     const Register b         = R24;</span>
+<span class="new">3384     const Register i         = R25;</span>
+<span class="new">3385     const Register c         = R26;</span>
+<span class="new">3386     const Register cs        = R27;</span>
+<span class="new">3387 </span>
+<span class="new">3388     // Labels</span>
+<span class="new">3389     Label SKIP_LSHIFT, SKIP_DIAGONAL_SUM, SKIP_ADDONE, SKIP_MULADD, SKIP_LOOP_SQUARE;</span>
+<span class="new">3390     Label LOOP_LSHIFT, LOOP_DIAGONAL_SUM, LOOP_ADDONE, LOOP_MULADD, LOOP_SQUARE;</span>
+<span class="new">3391 </span>
+<span class="new">3392     // Save non-volatile regs (frameless).</span>
+<span class="new">3393     int current_offs = -8;</span>
+<span class="new">3394     __ std(R28, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3395     __ std(R27, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3396     __ std(R26, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3397     __ std(R25, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3398     __ std(R24, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3399     __ std(R23, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3400     __ std(R22, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3401     __ std(R21, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3402     __ std(R20, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3403     __ std(R19, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3404     __ std(R18, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3405     __ std(R17, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3406     __ std(R16, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3407     __ std(R15, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3408     __ std(R14, current_offs, R1_SP);</span>
+<span class="new">3409 </span>
+<span class="new">3410     // Store the squares, right shifted one bit (i.e., divided by 2)</span>
+<span class="new">3411     __ subi   (out_aux,   out,       8);</span>
+<span class="new">3412     __ subi   (in_aux,    in,        4);</span>
+<span class="new">3413     __ cmpwi  (CCR0,      in_len,    0);</span>
+<span class="new">3414     // Initialize lplw outside of the loop</span>
+<span class="new">3415     __ xorr   (lplw,      lplw,      lplw);</span>
+<span class="new">3416     __ ble    (CCR0,      SKIP_LOOP_SQUARE);    // in_len &lt;= 0</span>
+<span class="new">3417     __ mtctr  (in_len);</span>
+<span class="new">3418 </span>
+<span class="new">3419     __ bind(LOOP_SQUARE);</span>
+<span class="new">3420     __ lwzu   (piece,     4,         in_aux);</span>
+<span class="new">3421     __ mulld  (product,   piece,     piece);</span>
+<span class="new">3422     // shift left 63 bits and only keep the MSB</span>
+<span class="new">3423     __ rldic  (lplw_s,    lplw,      63, 0);</span>
+<span class="new">3424     __ mr     (lplw,      product);</span>
+<span class="new">3425     // shift right 1 bit without sign extension</span>
+<span class="new">3426     __ srdi   (product,   product,   1);</span>
+<span class="new">3427     // join them to the same register and store it</span>
+<span class="new">3428     __ orr    (product,   lplw_s,    product);</span>
+<span class="new">3429 #ifdef VM_LITTLE_ENDIAN</span>
+<span class="new">3430     // Swap low and high words for little endian</span>
+<span class="new">3431     __ rldicl (product,   product,   32, 0);</span>
+<span class="new">3432 #endif</span>
+<span class="new">3433     __ stdu   (product,   8,         out_aux);</span>
+<span class="new">3434     __ bdnz   (LOOP_SQUARE);</span>
+<span class="new">3435 </span>
+<span class="new">3436     __ bind(SKIP_LOOP_SQUARE);</span>
+<span class="new">3437 </span>
+<span class="new">3438     // Add in off-diagonal sums</span>
+<span class="new">3439     __ cmpwi  (CCR0,      in_len,    0);</span>
+<span class="new">3440     __ ble    (CCR0,      SKIP_DIAGONAL_SUM);</span>
+<span class="new">3441     // Avoid CTR usage here in order to use it at mulAdd</span>
+<span class="new">3442     __ subi   (i_minus1,  in_len,    1);</span>
+<span class="new">3443     __ li     (offset,    4);</span>
+<span class="new">3444 </span>
+<span class="new">3445     __ bind(LOOP_DIAGONAL_SUM);</span>
+<span class="new">3446 </span>
+<span class="new">3447     __ sldi   (off_aux,   out_len,   2);</span>
+<span class="new">3448     __ sub    (off_aux,   off_aux,   offset);</span>
+<span class="new">3449 </span>
+<span class="new">3450     __ mr     (len,       i_minus1);</span>
+<span class="new">3451     __ sldi   (mlen,      i_minus1,  2);</span>
+<span class="new">3452     __ lwzx   (t,         in,        mlen);</span>
+<span class="new">3453 </span>
+<span class="new">3454     __ muladd (out, in, off_aux, len, t, a, b, carry);</span>
+<span class="new">3455 </span>
+<span class="new">3456     // begin&lt;addOne&gt;</span>
+<span class="new">3457     // off_aux = out_len*4 - 4 - mlen - offset*4 - 4;</span>
+<span class="new">3458     __ addi   (mlen,      mlen,      4);</span>
+<span class="new">3459     __ sldi   (a,         out_len,   2);</span>
+<span class="new">3460     __ subi   (a,         a,         4);</span>
+<span class="new">3461     __ sub    (a,         a,         mlen);</span>
+<span class="new">3462     __ subi   (off_aux,   offset,    4);</span>
+<span class="new">3463     __ sub    (off_aux,   a,         off_aux);</span>
+<span class="new">3464 </span>
+<span class="new">3465     __ lwzx   (b,         off_aux,   out);</span>
+<span class="new">3466     __ add    (b,         b,         carry);</span>
+<span class="new">3467     __ stwx   (b,         off_aux,   out);</span>
+<span class="new">3468 </span>
+<span class="new">3469     // if (((uint64_t)s &gt;&gt; 32) != 0) {</span>
+<span class="new">3470     __ srdi_  (a,         b,         32);</span>
+<span class="new">3471     __ beq    (CCR0,      SKIP_ADDONE);</span>
+<span class="new">3472 </span>
+<span class="new">3473     // while (--mlen &gt;= 0) {</span>
+<span class="new">3474     __ bind(LOOP_ADDONE);</span>
+<span class="new">3475     __ subi   (mlen,      mlen,      4);</span>
+<span class="new">3476     __ cmpwi  (CCR0,      mlen,      0);</span>
+<span class="new">3477     __ beq    (CCR0,      SKIP_ADDONE);</span>
+<span class="new">3478 </span>
+<span class="new">3479     // if (--offset_aux &lt; 0) { // Carry out of number</span>
+<span class="new">3480     __ subi   (off_aux,   off_aux,   4);</span>
+<span class="new">3481     __ cmpwi  (CCR0,      off_aux,   0);</span>
+<span class="new">3482     __ blt    (CCR0,      SKIP_ADDONE);</span>
+<span class="new">3483 </span>
+<span class="new">3484     // } else {</span>
+<span class="new">3485     __ lwzx   (b,         off_aux,   out);</span>
+<span class="new">3486     __ addi   (b,         b,         1);</span>
+<span class="new">3487     __ stwx   (b,         off_aux,   out);</span>
+<span class="new">3488     __ cmpwi  (CCR0,      b,         0);</span>
+<span class="new">3489     __ bne    (CCR0,      SKIP_ADDONE);</span>
+<span class="new">3490     __ b      (LOOP_ADDONE);</span>
+<span class="new">3491 </span>
+<span class="new">3492     __ bind(SKIP_ADDONE);</span>
+<span class="new">3493     // } } } end&lt;addOne&gt;</span>
+<span class="new">3494 </span>
+<span class="new">3495     __ addi   (offset,    offset,    8);</span>
+<span class="new">3496     __ subi   (i_minus1,  i_minus1,  1);</span>
+<span class="new">3497     __ cmpwi  (CCR0,      i_minus1,  0);</span>
+<span class="new">3498     __ bge    (CCR0,      LOOP_DIAGONAL_SUM);</span>
+<span class="new">3499 </span>
+<span class="new">3500     __ bind(SKIP_DIAGONAL_SUM);</span>
+<span class="new">3501 </span>
+<span class="new">3502     // Shift back up and set low bit</span>
+<span class="new">3503     // Shifts 1 bit left up to len positions. Assumes no leading zeros</span>
+<span class="new">3504     // begin&lt;primitiveLeftShift&gt;</span>
+<span class="new">3505     __ cmpwi  (CCR0,      out_len,   0);</span>
+<span class="new">3506     __ ble    (CCR0,      SKIP_LSHIFT);</span>
+<span class="new">3507     __ li     (i,         0);</span>
+<span class="new">3508     __ lwz    (c,         0,         out);</span>
+<span class="new">3509     __ subi   (b,         out_len,   1);</span>
+<span class="new">3510     __ mtctr  (b);</span>
+<span class="new">3511 </span>
+<span class="new">3512     __ bind(LOOP_LSHIFT);</span>
+<span class="new">3513     __ mr     (b,         c);</span>
+<span class="new">3514     __ addi   (cs,        i,         4);</span>
+<span class="new">3515     __ lwzx   (c,         out,       cs);</span>
+<span class="new">3516 </span>
+<span class="new">3517     __ sldi   (b,         b,         1);</span>
+<span class="new">3518     __ srwi   (cs,        c,         31);</span>
+<span class="new">3519     __ orr    (b,         b,         cs);</span>
+<span class="new">3520     __ stwx   (b,         i,         out);</span>
+<span class="new">3521 </span>
+<span class="new">3522     __ addi   (i,         i,         4);</span>
+<span class="new">3523     __ bdnz   (LOOP_LSHIFT);</span>
+<span class="new">3524 </span>
+<span class="new">3525     __ sldi   (c,         out_len,   2);</span>
+<span class="new">3526     __ subi   (c,         c,         4);</span>
+<span class="new">3527     __ lwzx   (b,         out,       c);</span>
+<span class="new">3528     __ sldi   (b,         b,         1);</span>
+<span class="new">3529     __ stwx   (b,         out,       c);</span>
+<span class="new">3530 </span>
+<span class="new">3531     __ bind(SKIP_LSHIFT);</span>
+<span class="new">3532     // end&lt;primitiveLeftShift&gt;</span>
+<span class="new">3533 </span>
+<span class="new">3534     // Set low bit</span>
+<span class="new">3535     __ sldi   (i,         in_len,    2);</span>
+<span class="new">3536     __ subi   (i,         i,         4);</span>
+<span class="new">3537     __ lwzx   (i,         in,        i);</span>
+<span class="new">3538     __ sldi   (c,         out_len,   2);</span>
+<span class="new">3539     __ subi   (c,         c,         4);</span>
+<span class="new">3540     __ lwzx   (b,         out,       c);</span>
+<span class="new">3541 </span>
+<span class="new">3542     __ andi   (i,         i,         1);</span>
+<span class="new">3543     __ orr    (i,         b,         i);</span>
+<span class="new">3544 </span>
+<span class="new">3545     __ stwx   (i,         out,       c);</span>
+<span class="new">3546 </span>
+<span class="new">3547     // Restore non-volatile regs.</span>
+<span class="new">3548     current_offs = -8;</span>
+<span class="new">3549     __ ld(R28, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3550     __ ld(R27, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3551     __ ld(R26, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3552     __ ld(R25, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3553     __ ld(R24, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3554     __ ld(R23, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3555     __ ld(R22, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3556     __ ld(R21, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3557     __ ld(R20, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3558     __ ld(R19, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3559     __ ld(R18, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3560     __ ld(R17, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3561     __ ld(R16, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3562     __ ld(R15, current_offs, R1_SP); current_offs -= 8;</span>
+<span class="new">3563     __ ld(R14, current_offs, R1_SP);</span>
+<span class="new">3564 </span>
+<span class="new">3565     __ mr(ret, out);</span>
+<span class="new">3566     __ blr();</span>
+<span class="new">3567 </span>
+<span class="new">3568     return start;</span>
+<span class="new">3569   }</span>
+3570 
+3571   /**
+3572    * Arguments:
+3573    *
+3574    * Inputs:
+3575    *   R3_ARG1    - int   crc
+3576    *   R4_ARG2    - byte* buf
+3577    *   R5_ARG3    - int   length (of buffer)
+3578    *
+3579    * scratch:
+3580    *   R2, R6-R12
+3581    *
+3582    * Ouput:
+3583    *   R3_RET     - int   crc result
+3584    */
+3585   // Compute CRC32 function.
+3586   address generate_CRC32_updateBytes(const char* name) {
+3587     __ align(CodeEntryAlignment);
+3588     StubCodeMark mark(this, "StubRoutines", name);
+3589     address start = __ function_entry();  // Remember stub start address (is rtn value).
+
+</pre><hr></hr><pre>
+3744     // support for verify_oop (must happen after universe_init)
+3745     StubRoutines::_verify_oop_subroutine_entry             = generate_verify_oop();
+3746 
+3747     // arraycopy stubs used by compilers
+3748     generate_arraycopy_stubs();
+3749 
+3750     // Safefetch stubs.
+3751     generate_safefetch("SafeFetch32", sizeof(int),     &amp;StubRoutines::_safefetch32_entry,
+3752                                                        &amp;StubRoutines::_safefetch32_fault_pc,
+3753                                                        &amp;StubRoutines::_safefetch32_continuation_pc);
+3754     generate_safefetch("SafeFetchN", sizeof(intptr_t), &amp;StubRoutines::_safefetchN_entry,
+3755                                                        &amp;StubRoutines::_safefetchN_fault_pc,
+3756                                                        &amp;StubRoutines::_safefetchN_continuation_pc);
+3757 
+3758 #ifdef COMPILER2
+3759     if (UseMultiplyToLenIntrinsic) {
+3760       StubRoutines::_multiplyToLen = generate_multiplyToLen();
+3761     }
+3762 #endif
+3763 
+<span class="new">3764     if (UseSquareToLenIntrinsic) {</span>
+<span class="new">3765       StubRoutines::_squareToLen = generate_squareToLen();</span>
+<span class="new">3766     }</span>
+<span class="new">3767     if (UseMulAddIntrinsic) {</span>
+<span class="new">3768       StubRoutines::_mulAdd = generate_mulAdd();</span>
+<span class="new">3769     }</span>
+3770     if (UseMontgomeryMultiplyIntrinsic) {
+3771       StubRoutines::_montgomeryMultiply
+3772         = CAST_FROM_FN_PTR(address, SharedRuntime::montgomery_multiply);
+3773     }
+3774     if (UseMontgomerySquareIntrinsic) {
+3775       StubRoutines::_montgomerySquare
+3776         = CAST_FROM_FN_PTR(address, SharedRuntime::montgomery_square);
+3777     }
+3778 
+3779     if (UseAESIntrinsics) {
+3780       StubRoutines::_aescrypt_encryptBlock = generate_aescrypt_encryptBlock();
+3781       StubRoutines::_aescrypt_decryptBlock = generate_aescrypt_decryptBlock();
+3782     }
+3783 
+3784   }
+3785 
+3786  public:
+3787   StubGenerator(CodeBuffer* code, bool all) : StubCodeGenerator(code) {
+3788     // replace the standard masm with a special one:
+3789     _masm = new MacroAssembler(code);
+</pre></td>
+</tr></table>
+<center><a href='../../../../src/cpu/ppc/vm/macroAssembler_ppc.hpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/vm_version_ppc.cpp.sdiff.html' target='_top'>next &gt</a></center>
+</body></html>

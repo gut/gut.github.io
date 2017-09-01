@@ -1,0 +1,191 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk10-hotspot-hg Sdiff src/cpu/ppc/vm </title>
+</head><body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/macroAssembler_ppc.cpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/stubGenerator_ppc.cpp.sdiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/macroAssembler_ppc.hpp</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13389">13389</a> : PPC: Implement MulAdd and SquareToLen intrinsics
+
+This implementation is based on the algorithm implemented in java. It
+yields a performance speedup of:
+JDK8 - 23%
+JDK9 - 5%
+JDK10 - 5%</pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+ 795 #endif
+ 796 
+ 797   // Emitters for BigInteger.multiplyToLen intrinsic.
+ 798   inline void multiply64(Register dest_hi, Register dest_lo,
+ 799                          Register x, Register y);
+ 800   void add2_with_carry(Register dest_hi, Register dest_lo,
+ 801                        Register src1, Register src2);
+ 802   void multiply_64_x_64_loop(Register x, Register xstart, Register x_xstart,
+ 803                              Register y, Register y_idx, Register z,
+ 804                              Register carry, Register product_high, Register product,
+ 805                              Register idx, Register kdx, Register tmp);
+ 806   void multiply_add_128_x_128(Register x_xstart, Register y, Register z,
+ 807                               Register yz_idx, Register idx, Register carry,
+ 808                               Register product_high, Register product, Register tmp,
+ 809                               int offset);
+ 810   void multiply_128_x_128_loop(Register x_xstart,
+ 811                                Register y, Register z,
+ 812                                Register yz_idx, Register idx, Register carry,
+ 813                                Register product_high, Register product,
+ 814                                Register carry2, Register tmp);
+
+
+ 815   void multiply_to_len(Register x, Register xlen,
+ 816                        Register y, Register ylen,
+ 817                        Register z, Register zlen,
+ 818                        Register tmp1, Register tmp2, Register tmp3, Register tmp4, Register tmp5,
+ 819                        Register tmp6, Register tmp7, Register tmp8, Register tmp9, Register tmp10,
+ 820                        Register tmp11, Register tmp12, Register tmp13);
+ 821 
+ 822   // Emitters for CRC32 calculation.
+ 823   // A note on invertCRC:
+ 824   //   Unfortunately, internal representation of crc differs between CRC32 and CRC32C.
+ 825   //   CRC32 holds it's current crc value in the externally visible representation.
+ 826   //   CRC32C holds it's current crc value in internal format, ready for updating.
+ 827   //   Thus, the crc value must be bit-flipped before updating it in the CRC32 case.
+ 828   //   In the CRC32C case, it must be bit-flipped when it is given to the outside world (getValue()).
+ 829   //   The bool invertCRC parameter indicates whether bit-flipping is required before updates.
+ 830   void load_reverse_32(Register dst, Register src);
+ 831   int  crc32_table_columns(Register table, Register tc0, Register tc1, Register tc2, Register tc3);
+ 832   void fold_byte_crc32(Register crc, Register val, Register table, Register tmp);
+ 833   void fold_8bit_crc32(Register crc, Register table, Register tmp);
+ 834   void update_byte_crc32(Register crc, Register val, Register table);
+
+</pre><hr></hr>
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+ 795 #endif
+ 796 
+ 797   // Emitters for BigInteger.multiplyToLen intrinsic.
+ 798   inline void multiply64(Register dest_hi, Register dest_lo,
+ 799                          Register x, Register y);
+ 800   void add2_with_carry(Register dest_hi, Register dest_lo,
+ 801                        Register src1, Register src2);
+ 802   void multiply_64_x_64_loop(Register x, Register xstart, Register x_xstart,
+ 803                              Register y, Register y_idx, Register z,
+ 804                              Register carry, Register product_high, Register product,
+ 805                              Register idx, Register kdx, Register tmp);
+ 806   void multiply_add_128_x_128(Register x_xstart, Register y, Register z,
+ 807                               Register yz_idx, Register idx, Register carry,
+ 808                               Register product_high, Register product, Register tmp,
+ 809                               int offset);
+ 810   void multiply_128_x_128_loop(Register x_xstart,
+ 811                                Register y, Register z,
+ 812                                Register yz_idx, Register idx, Register carry,
+ 813                                Register product_high, Register product,
+ 814                                Register carry2, Register tmp);
+<span class="new"> 815   void muladd(Register out, Register in, Register offset, Register len, Register k,</span>
+<span class="new"> 816               Register tmp1, Register tmp2, Register carry);</span>
+ 817   void multiply_to_len(Register x, Register xlen,
+ 818                        Register y, Register ylen,
+ 819                        Register z, Register zlen,
+ 820                        Register tmp1, Register tmp2, Register tmp3, Register tmp4, Register tmp5,
+ 821                        Register tmp6, Register tmp7, Register tmp8, Register tmp9, Register tmp10,
+ 822                        Register tmp11, Register tmp12, Register tmp13);
+ 823 
+ 824   // Emitters for CRC32 calculation.
+ 825   // A note on invertCRC:
+ 826   //   Unfortunately, internal representation of crc differs between CRC32 and CRC32C.
+ 827   //   CRC32 holds it's current crc value in the externally visible representation.
+ 828   //   CRC32C holds it's current crc value in internal format, ready for updating.
+ 829   //   Thus, the crc value must be bit-flipped before updating it in the CRC32 case.
+ 830   //   In the CRC32C case, it must be bit-flipped when it is given to the outside world (getValue()).
+ 831   //   The bool invertCRC parameter indicates whether bit-flipping is required before updates.
+ 832   void load_reverse_32(Register dst, Register src);
+ 833   int  crc32_table_columns(Register table, Register tc0, Register tc1, Register tc2, Register tc3);
+ 834   void fold_byte_crc32(Register crc, Register val, Register table, Register tmp);
+ 835   void fold_8bit_crc32(Register crc, Register table, Register tmp);
+ 836   void update_byte_crc32(Register crc, Register val, Register table);
+
+</pre><hr></hr>
+</pre></td>
+</tr></table>
+<center><a href='../../../../src/cpu/ppc/vm/macroAssembler_ppc.cpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/stubGenerator_ppc.cpp.sdiff.html' target='_top'>next &gt</a></center>
+</body></html>
