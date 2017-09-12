@@ -1,0 +1,281 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk10-hotspot-hg Sdiff src/cpu/ppc/vm </title>
+</head><body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/vm_version_ppc.cpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../test/compiler/intrinsics/sha/cli/testcases/GenericTestCaseForOtherCPU.java.sdiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/vm_version_ppc.hpp</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13437">13437</a> : Implement SHA256 and SHA512 intrinsics for PPC64
+
+Sample run reduced 6.5s run to 2.8s for SHA256.</pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+  32 class VM_Version: public Abstract_VM_Version {
+  33 protected:
+  34   enum Feature_Flag {
+  35     fsqrt,
+  36     fsqrts,
+  37     isel,
+  38     lxarxeh,
+  39     cmpb,
+  40     popcntb,
+  41     popcntw,
+  42     fcfids,
+  43     vand,
+  44     lqarx,
+  45     vcipher,
+  46     vpmsumb,
+  47     tcheck,
+  48     mfdscr,
+  49     vsx,
+  50     ldbrx,
+  51     stdbrx,
+
+  52     num_features // last entry to count features
+  53   };
+  54   enum Feature_Flag_Set {
+  55     unknown_m             = 0,
+  56     fsqrt_m               = (1 &lt;&lt; fsqrt  ),
+  57     fsqrts_m              = (1 &lt;&lt; fsqrts ),
+  58     isel_m                = (1 &lt;&lt; isel   ),
+  59     lxarxeh_m             = (1 &lt;&lt; lxarxeh),
+  60     cmpb_m                = (1 &lt;&lt; cmpb   ),
+  61     popcntb_m             = (1 &lt;&lt; popcntb),
+  62     popcntw_m             = (1 &lt;&lt; popcntw),
+  63     fcfids_m              = (1 &lt;&lt; fcfids ),
+  64     vand_m                = (1 &lt;&lt; vand   ),
+  65     lqarx_m               = (1 &lt;&lt; lqarx  ),
+  66     vcipher_m             = (1 &lt;&lt; vcipher),
+
+  67     vpmsumb_m             = (1 &lt;&lt; vpmsumb),
+  68     tcheck_m              = (1 &lt;&lt; tcheck ),
+  69     mfdscr_m              = (1 &lt;&lt; mfdscr ),
+  70     vsx_m                 = (1 &lt;&lt; vsx    ),
+  71     ldbrx_m               = (1 &lt;&lt; ldbrx  ),
+  72     stdbrx_m              = (1 &lt;&lt; stdbrx ),
+  73     all_features_m        = (unsigned long)-1
+  74   };
+  75 
+  76   static bool _is_determine_features_test_running;
+  77 
+  78   static void print_features();
+  79   static void determine_features(); // also measures cache line size
+  80   static void config_dscr(); // Power 8: Configure Data Stream Control Register.
+  81   static void determine_section_size();
+  82   static void power6_micro_bench();
+  83 public:
+  84   // Initialization
+  85   static void initialize();
+  86 
+
+</pre><hr></hr><pre>
+  89 
+  90   static bool is_determine_features_test_running() { return _is_determine_features_test_running; }
+  91   // CPU instruction support
+  92   static bool has_fsqrt()   { return (_features &amp; fsqrt_m) != 0; }
+  93   static bool has_fsqrts()  { return (_features &amp; fsqrts_m) != 0; }
+  94   static bool has_isel()    { return (_features &amp; isel_m) != 0; }
+  95   static bool has_lxarxeh() { return (_features &amp; lxarxeh_m) !=0; }
+  96   static bool has_cmpb()    { return (_features &amp; cmpb_m) != 0; }
+  97   static bool has_popcntb() { return (_features &amp; popcntb_m) != 0; }
+  98   static bool has_popcntw() { return (_features &amp; popcntw_m) != 0; }
+  99   static bool has_fcfids()  { return (_features &amp; fcfids_m) != 0; }
+ 100   static bool has_vand()    { return (_features &amp; vand_m) != 0; }
+ 101   static bool has_lqarx()   { return (_features &amp; lqarx_m) != 0; }
+ 102   static bool has_vcipher() { return (_features &amp; vcipher_m) != 0; }
+ 103   static bool has_vpmsumb() { return (_features &amp; vpmsumb_m) != 0; }
+ 104   static bool has_tcheck()  { return (_features &amp; tcheck_m) != 0; }
+ 105   static bool has_mfdscr()  { return (_features &amp; mfdscr_m) != 0; }
+ 106   static bool has_vsx()     { return (_features &amp; vsx_m) != 0; }
+ 107   static bool has_ldbrx()   { return (_features &amp; ldbrx_m) != 0; }
+ 108   static bool has_stdbrx()  { return (_features &amp; stdbrx_m) != 0; }
+
+ 109   static bool has_mtfprd()  { return has_vpmsumb(); } // alias for P8
+ 110 
+ 111   // Assembler testing
+ 112   static void allow_all();
+ 113   static void revert();
+ 114 
+ 115   // POWER 8: DSCR current value.
+ 116   static uint64_t _dscr_val;
+ 117 };
+ 118 
+ 119 #endif // CPU_PPC_VM_VM_VERSION_PPC_HPP
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+  32 class VM_Version: public Abstract_VM_Version {
+  33 protected:
+  34   enum Feature_Flag {
+  35     fsqrt,
+  36     fsqrts,
+  37     isel,
+  38     lxarxeh,
+  39     cmpb,
+  40     popcntb,
+  41     popcntw,
+  42     fcfids,
+  43     vand,
+  44     lqarx,
+  45     vcipher,
+  46     vpmsumb,
+  47     tcheck,
+  48     mfdscr,
+  49     vsx,
+  50     ldbrx,
+  51     stdbrx,
+<span class="new">  52     vshasig,</span>
+  53     num_features // last entry to count features
+  54   };
+  55   enum Feature_Flag_Set {
+  56     unknown_m             = 0,
+  57     fsqrt_m               = (1 &lt;&lt; fsqrt  ),
+  58     fsqrts_m              = (1 &lt;&lt; fsqrts ),
+  59     isel_m                = (1 &lt;&lt; isel   ),
+  60     lxarxeh_m             = (1 &lt;&lt; lxarxeh),
+  61     cmpb_m                = (1 &lt;&lt; cmpb   ),
+  62     popcntb_m             = (1 &lt;&lt; popcntb),
+  63     popcntw_m             = (1 &lt;&lt; popcntw),
+  64     fcfids_m              = (1 &lt;&lt; fcfids ),
+  65     vand_m                = (1 &lt;&lt; vand   ),
+  66     lqarx_m               = (1 &lt;&lt; lqarx  ),
+  67     vcipher_m             = (1 &lt;&lt; vcipher),
+<span class="new">  68     vshasig_m             = (1 &lt;&lt; vshasig),</span>
+  69     vpmsumb_m             = (1 &lt;&lt; vpmsumb),
+  70     tcheck_m              = (1 &lt;&lt; tcheck ),
+  71     mfdscr_m              = (1 &lt;&lt; mfdscr ),
+  72     vsx_m                 = (1 &lt;&lt; vsx    ),
+  73     ldbrx_m               = (1 &lt;&lt; ldbrx  ),
+  74     stdbrx_m              = (1 &lt;&lt; stdbrx ),
+  75     all_features_m        = (unsigned long)-1
+  76   };
+  77 
+  78   static bool _is_determine_features_test_running;
+  79 
+  80   static void print_features();
+  81   static void determine_features(); // also measures cache line size
+  82   static void config_dscr(); // Power 8: Configure Data Stream Control Register.
+  83   static void determine_section_size();
+  84   static void power6_micro_bench();
+  85 public:
+  86   // Initialization
+  87   static void initialize();
+  88 
+
+</pre><hr></hr><pre>
+  91 
+  92   static bool is_determine_features_test_running() { return _is_determine_features_test_running; }
+  93   // CPU instruction support
+  94   static bool has_fsqrt()   { return (_features &amp; fsqrt_m) != 0; }
+  95   static bool has_fsqrts()  { return (_features &amp; fsqrts_m) != 0; }
+  96   static bool has_isel()    { return (_features &amp; isel_m) != 0; }
+  97   static bool has_lxarxeh() { return (_features &amp; lxarxeh_m) !=0; }
+  98   static bool has_cmpb()    { return (_features &amp; cmpb_m) != 0; }
+  99   static bool has_popcntb() { return (_features &amp; popcntb_m) != 0; }
+ 100   static bool has_popcntw() { return (_features &amp; popcntw_m) != 0; }
+ 101   static bool has_fcfids()  { return (_features &amp; fcfids_m) != 0; }
+ 102   static bool has_vand()    { return (_features &amp; vand_m) != 0; }
+ 103   static bool has_lqarx()   { return (_features &amp; lqarx_m) != 0; }
+ 104   static bool has_vcipher() { return (_features &amp; vcipher_m) != 0; }
+ 105   static bool has_vpmsumb() { return (_features &amp; vpmsumb_m) != 0; }
+ 106   static bool has_tcheck()  { return (_features &amp; tcheck_m) != 0; }
+ 107   static bool has_mfdscr()  { return (_features &amp; mfdscr_m) != 0; }
+ 108   static bool has_vsx()     { return (_features &amp; vsx_m) != 0; }
+ 109   static bool has_ldbrx()   { return (_features &amp; ldbrx_m) != 0; }
+ 110   static bool has_stdbrx()  { return (_features &amp; stdbrx_m) != 0; }
+<span class="new"> 111   static bool has_vshasig() { return (_features &amp; vshasig_m) != 0; }</span>
+ 112   static bool has_mtfprd()  { return has_vpmsumb(); } // alias for P8
+ 113 
+ 114   // Assembler testing
+ 115   static void allow_all();
+ 116   static void revert();
+ 117 
+ 118   // POWER 8: DSCR current value.
+ 119   static uint64_t _dscr_val;
+ 120 };
+ 121 
+ 122 #endif // CPU_PPC_VM_VM_VERSION_PPC_HPP
+</pre></td>
+</tr></table>
+<center><a href='../../../../src/cpu/ppc/vm/vm_version_ppc.cpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../test/compiler/intrinsics/sha/cli/testcases/GenericTestCaseForOtherCPU.java.sdiff.html' target='_top'>next &gt</a></center>
+</body></html>

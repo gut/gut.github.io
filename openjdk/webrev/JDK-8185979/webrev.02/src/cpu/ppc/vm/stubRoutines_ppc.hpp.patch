@@ -1,0 +1,11 @@
+--- old/src/cpu/ppc/vm/stubRoutines_ppc.hpp	2017-09-12 11:29:54.484417665 -0300
++++ new/src/cpu/ppc/vm/stubRoutines_ppc.hpp	2017-09-12 11:29:54.364414815 -0300
+@@ -34,7 +34,7 @@
+ 
+ enum platform_dependent_constants {
+   code_size1 = 20000,          // simply increase if too small (assembler will crash if too small)
+-  code_size2 = 20000           // simply increase if too small (assembler will crash if too small)
++  code_size2 = 22000           // simply increase if too small (assembler will crash if too small)
+ };
+ 
+ // CRC32 Intrinsics.

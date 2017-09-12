@@ -1,0 +1,275 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk10-hotspot-hg Sdiff src/cpu/ppc/vm </title>
+</head><body id="SUNWwebrev">
+<center>&lt prev <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/assembler_ppc.inline.hpp.sdiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/assembler_ppc.hpp</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13439">13439</a> : Martin's <a href="https://bugs.openjdk.java.net/browse/JDK-8185979">8185979</a>: PPC64: Implement SHA2 intrinsic</pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+2157 
+2158   // VSX Extended Mnemonics
+2159   inline void xxspltd(  VectorSRegister d, VectorSRegister a, int x);
+2160   inline void xxmrghd(  VectorSRegister d, VectorSRegister a, VectorSRegister b);
+2161   inline void xxmrgld(  VectorSRegister d, VectorSRegister a, VectorSRegister b);
+2162   inline void xxswapd(  VectorSRegister d, VectorSRegister a);
+2163 
+2164   // Vector-Scalar (VSX) instructions.
+2165   inline void mtfprd(   FloatRegister   d, Register a);
+2166   inline void mtfprwa(  FloatRegister   d, Register a);
+2167   inline void mffprd(   Register        a, FloatRegister d);
+2168 
+2169   // AES (introduced with Power 8)
+2170   inline void vcipher(     VectorRegister d, VectorRegister a, VectorRegister b);
+2171   inline void vcipherlast( VectorRegister d, VectorRegister a, VectorRegister b);
+2172   inline void vncipher(    VectorRegister d, VectorRegister a, VectorRegister b);
+2173   inline void vncipherlast(VectorRegister d, VectorRegister a, VectorRegister b);
+2174   inline void vsbox(       VectorRegister d, VectorRegister a);
+2175 
+2176   // SHA (introduced with Power 8)
+<span class="changed">2177   // Not yet implemented.</span>
+
+2178 
+2179   // Vector Binary Polynomial Multiplication (introduced with Power 8)
+2180   inline void vpmsumb(  VectorRegister d, VectorRegister a, VectorRegister b);
+2181   inline void vpmsumd(  VectorRegister d, VectorRegister a, VectorRegister b);
+2182   inline void vpmsumh(  VectorRegister d, VectorRegister a, VectorRegister b);
+2183   inline void vpmsumw(  VectorRegister d, VectorRegister a, VectorRegister b);
+2184 
+2185   // Vector Permute and Xor (introduced with Power 8)
+2186   inline void vpermxor( VectorRegister d, VectorRegister a, VectorRegister b, VectorRegister c);
+2187 
+2188   // Transactional Memory instructions (introduced with Power 8)
+2189   inline void tbegin_();    // R=0
+2190   inline void tbeginrot_(); // R=1 Rollback-Only Transaction
+2191   inline void tend_();    // A=0
+2192   inline void tendall_(); // A=1
+2193   inline void tabort_();
+2194   inline void tabort_(Register a);
+2195   inline void tabortwc_(int t, Register a, Register b);
+2196   inline void tabortwci_(int t, Register a, int si);
+2197   inline void tabortdc_(int t, Register a, Register b);
+
+</pre><hr></hr><pre>
+2267   inline void lfs(   FloatRegister d, int si16);
+2268   inline void lfsx(  FloatRegister d, Register b);
+2269   inline void lfd(   FloatRegister d, int si16);
+2270   inline void lfdx(  FloatRegister d, Register b);
+2271   inline void stfs(  FloatRegister s, int si16);
+2272   inline void stfsx( FloatRegister s, Register b);
+2273   inline void stfd(  FloatRegister s, int si16);
+2274   inline void stfdx( FloatRegister s, Register b);
+2275   inline void lvebx( VectorRegister d, Register s2);
+2276   inline void lvehx( VectorRegister d, Register s2);
+2277   inline void lvewx( VectorRegister d, Register s2);
+2278   inline void lvx(   VectorRegister d, Register s2);
+2279   inline void lvxl(  VectorRegister d, Register s2);
+2280   inline void stvebx(VectorRegister d, Register s2);
+2281   inline void stvehx(VectorRegister d, Register s2);
+2282   inline void stvewx(VectorRegister d, Register s2);
+2283   inline void stvx(  VectorRegister d, Register s2);
+2284   inline void stvxl( VectorRegister d, Register s2);
+2285   inline void lvsl(  VectorRegister d, Register s2);
+2286   inline void lvsr(  VectorRegister d, Register s2);
+
+
+
+2287 
+2288   // RegisterOrConstant versions.
+2289   // These emitters choose between the versions using two registers and
+2290   // those with register and immediate, depending on the content of roc.
+2291   // If the constant is not encodable as immediate, instructions to
+2292   // load the constant are emitted beforehand. Store instructions need a
+2293   // tmp reg if the constant is not encodable as immediate.
+2294   // Size unpredictable.
+2295   void ld(  Register d, RegisterOrConstant roc, Register s1 = noreg);
+2296   void lwa( Register d, RegisterOrConstant roc, Register s1 = noreg);
+2297   void lwz( Register d, RegisterOrConstant roc, Register s1 = noreg);
+2298   void lha( Register d, RegisterOrConstant roc, Register s1 = noreg);
+2299   void lhz( Register d, RegisterOrConstant roc, Register s1 = noreg);
+2300   void lbz( Register d, RegisterOrConstant roc, Register s1 = noreg);
+2301   void std( Register d, RegisterOrConstant roc, Register s1 = noreg, Register tmp = noreg);
+2302   void stw( Register d, RegisterOrConstant roc, Register s1 = noreg, Register tmp = noreg);
+2303   void sth( Register d, RegisterOrConstant roc, Register s1 = noreg, Register tmp = noreg);
+2304   void stb( Register d, RegisterOrConstant roc, Register s1 = noreg, Register tmp = noreg);
+2305   void add( Register d, RegisterOrConstant roc, Register s1);
+2306   void subf(Register d, RegisterOrConstant roc, Register s1);
+
+</pre><hr></hr>
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+2157 
+2158   // VSX Extended Mnemonics
+2159   inline void xxspltd(  VectorSRegister d, VectorSRegister a, int x);
+2160   inline void xxmrghd(  VectorSRegister d, VectorSRegister a, VectorSRegister b);
+2161   inline void xxmrgld(  VectorSRegister d, VectorSRegister a, VectorSRegister b);
+2162   inline void xxswapd(  VectorSRegister d, VectorSRegister a);
+2163 
+2164   // Vector-Scalar (VSX) instructions.
+2165   inline void mtfprd(   FloatRegister   d, Register a);
+2166   inline void mtfprwa(  FloatRegister   d, Register a);
+2167   inline void mffprd(   Register        a, FloatRegister d);
+2168 
+2169   // AES (introduced with Power 8)
+2170   inline void vcipher(     VectorRegister d, VectorRegister a, VectorRegister b);
+2171   inline void vcipherlast( VectorRegister d, VectorRegister a, VectorRegister b);
+2172   inline void vncipher(    VectorRegister d, VectorRegister a, VectorRegister b);
+2173   inline void vncipherlast(VectorRegister d, VectorRegister a, VectorRegister b);
+2174   inline void vsbox(       VectorRegister d, VectorRegister a);
+2175 
+2176   // SHA (introduced with Power 8)
+<span class="changed">2177   inline void vshasigmad(VectorRegister d, VectorRegister a, bool st, int six);</span>
+<span class="changed">2178   inline void vshasigmaw(VectorRegister d, VectorRegister a, bool st, int six);</span>
+2179 
+2180   // Vector Binary Polynomial Multiplication (introduced with Power 8)
+2181   inline void vpmsumb(  VectorRegister d, VectorRegister a, VectorRegister b);
+2182   inline void vpmsumd(  VectorRegister d, VectorRegister a, VectorRegister b);
+2183   inline void vpmsumh(  VectorRegister d, VectorRegister a, VectorRegister b);
+2184   inline void vpmsumw(  VectorRegister d, VectorRegister a, VectorRegister b);
+2185 
+2186   // Vector Permute and Xor (introduced with Power 8)
+2187   inline void vpermxor( VectorRegister d, VectorRegister a, VectorRegister b, VectorRegister c);
+2188 
+2189   // Transactional Memory instructions (introduced with Power 8)
+2190   inline void tbegin_();    // R=0
+2191   inline void tbeginrot_(); // R=1 Rollback-Only Transaction
+2192   inline void tend_();    // A=0
+2193   inline void tendall_(); // A=1
+2194   inline void tabort_();
+2195   inline void tabort_(Register a);
+2196   inline void tabortwc_(int t, Register a, Register b);
+2197   inline void tabortwci_(int t, Register a, int si);
+2198   inline void tabortdc_(int t, Register a, Register b);
+
+</pre><hr></hr><pre>
+2268   inline void lfs(   FloatRegister d, int si16);
+2269   inline void lfsx(  FloatRegister d, Register b);
+2270   inline void lfd(   FloatRegister d, int si16);
+2271   inline void lfdx(  FloatRegister d, Register b);
+2272   inline void stfs(  FloatRegister s, int si16);
+2273   inline void stfsx( FloatRegister s, Register b);
+2274   inline void stfd(  FloatRegister s, int si16);
+2275   inline void stfdx( FloatRegister s, Register b);
+2276   inline void lvebx( VectorRegister d, Register s2);
+2277   inline void lvehx( VectorRegister d, Register s2);
+2278   inline void lvewx( VectorRegister d, Register s2);
+2279   inline void lvx(   VectorRegister d, Register s2);
+2280   inline void lvxl(  VectorRegister d, Register s2);
+2281   inline void stvebx(VectorRegister d, Register s2);
+2282   inline void stvehx(VectorRegister d, Register s2);
+2283   inline void stvewx(VectorRegister d, Register s2);
+2284   inline void stvx(  VectorRegister d, Register s2);
+2285   inline void stvxl( VectorRegister d, Register s2);
+2286   inline void lvsl(  VectorRegister d, Register s2);
+2287   inline void lvsr(  VectorRegister d, Register s2);
+<span class="new">2288 </span>
+<span class="new">2289   // Endianess specific concatenation of 2 loaded vectors.</span>
+<span class="new">2290   inline void vec_perm(VectorRegister first_dest, VectorRegister second, VectorRegister perm);</span>
+2291 
+2292   // RegisterOrConstant versions.
+2293   // These emitters choose between the versions using two registers and
+2294   // those with register and immediate, depending on the content of roc.
+2295   // If the constant is not encodable as immediate, instructions to
+2296   // load the constant are emitted beforehand. Store instructions need a
+2297   // tmp reg if the constant is not encodable as immediate.
+2298   // Size unpredictable.
+2299   void ld(  Register d, RegisterOrConstant roc, Register s1 = noreg);
+2300   void lwa( Register d, RegisterOrConstant roc, Register s1 = noreg);
+2301   void lwz( Register d, RegisterOrConstant roc, Register s1 = noreg);
+2302   void lha( Register d, RegisterOrConstant roc, Register s1 = noreg);
+2303   void lhz( Register d, RegisterOrConstant roc, Register s1 = noreg);
+2304   void lbz( Register d, RegisterOrConstant roc, Register s1 = noreg);
+2305   void std( Register d, RegisterOrConstant roc, Register s1 = noreg, Register tmp = noreg);
+2306   void stw( Register d, RegisterOrConstant roc, Register s1 = noreg, Register tmp = noreg);
+2307   void sth( Register d, RegisterOrConstant roc, Register s1 = noreg, Register tmp = noreg);
+2308   void stb( Register d, RegisterOrConstant roc, Register s1 = noreg, Register tmp = noreg);
+2309   void add( Register d, RegisterOrConstant roc, Register s1);
+2310   void subf(Register d, RegisterOrConstant roc, Register s1);
+
+</pre><hr></hr>
+</pre></td>
+</tr></table>
+<center>&lt prev <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/assembler_ppc.inline.hpp.sdiff.html' target='_top'>next &gt</a></center>
+</body></html>

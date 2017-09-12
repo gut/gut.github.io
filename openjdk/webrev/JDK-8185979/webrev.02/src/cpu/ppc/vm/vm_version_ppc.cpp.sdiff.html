@@ -1,0 +1,549 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk10-hotspot-hg Sdiff src/cpu/ppc/vm </title>
+</head><body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/stubRoutines_ppc.hpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/vm_version_ppc.hpp.sdiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/vm_version_ppc.cpp</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre>rev <a href="https://bugs.openjdk.java.net/browse/JDK-13439">13439</a> : Martin's <a href="https://bugs.openjdk.java.net/browse/JDK-8185979">8185979</a>: PPC64: Implement SHA2 intrinsic</pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+  96 
+  97 #ifdef COMPILER2
+  98   if (!UseSIGTRAP) {
+  99     MSG(TrapBasedRangeChecks);
+ 100     FLAG_SET_ERGO(bool, TrapBasedRangeChecks, false);
+ 101   }
+ 102 
+ 103   // On Power6 test for section size.
+ 104   if (PowerArchitecturePPC64 == 6) {
+ 105     determine_section_size();
+ 106   // TODO: PPC port } else {
+ 107   // TODO: PPC port PdScheduling::power6SectorSize = 0x20;
+ 108   }
+ 109 
+ 110   MaxVectorSize = 8;
+ 111 #endif
+ 112 
+ 113   // Create and print feature-string.
+ 114   char buf[(num_features+1) * 16]; // Max 16 chars per feature.
+ 115   jio_snprintf(buf, sizeof(buf),
+<span class="changed"> 116                "ppc64%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",</span>
+ 117                (has_fsqrt()   ? " fsqrt"   : ""),
+ 118                (has_isel()    ? " isel"    : ""),
+ 119                (has_lxarxeh() ? " lxarxeh" : ""),
+ 120                (has_cmpb()    ? " cmpb"    : ""),
+ 121                //(has_mftgpr()? " mftgpr"  : ""),
+ 122                (has_popcntb() ? " popcntb" : ""),
+ 123                (has_popcntw() ? " popcntw" : ""),
+ 124                (has_fcfids()  ? " fcfids"  : ""),
+ 125                (has_vand()    ? " vand"    : ""),
+ 126                (has_lqarx()   ? " lqarx"   : ""),
+ 127                (has_vcipher() ? " aes"     : ""),
+ 128                (has_vpmsumb() ? " vpmsumb" : ""),
+ 129                (has_tcheck()  ? " tcheck"  : ""),
+ 130                (has_mfdscr()  ? " mfdscr"  : ""),
+ 131                (has_vsx()     ? " vsx"     : ""),
+ 132                (has_ldbrx()   ? " ldbrx"   : ""),
+<span class="changed"> 133                (has_stdbrx()  ? " stdbrx"  : "")</span>
+
+ 134                // Make sure number of %s matches num_features!
+ 135               );
+ 136   _features_string = os::strdup(buf);
+ 137   if (Verbose) {
+ 138     print_features();
+ 139   }
+ 140 
+ 141   // PPC64 supports 8-byte compare-exchange operations (see
+ 142   // Atomic::cmpxchg and StubGenerator::generate_atomic_cmpxchg_ptr)
+ 143   // and 'atomic long memory ops' (see Unsafe_GetLongVolatile).
+ 144   _supports_cx8 = true;
+ 145 
+ 146   // Used by C1.
+ 147   _supports_atomic_getset4 = true;
+ 148   _supports_atomic_getadd4 = true;
+ 149   _supports_atomic_getset8 = true;
+ 150   _supports_atomic_getadd8 = true;
+ 151 
+ 152   UseSSE = 0; // Only on x86 and x64
+ 153 
+
+</pre><hr></hr><pre>
+ 230     if (!FLAG_IS_DEFAULT(UseAESIntrinsics))
+ 231       warning("AES intrinsics are not available on this CPU");
+ 232     FLAG_SET_DEFAULT(UseAESIntrinsics, false);
+ 233   }
+ 234 #endif
+ 235 
+ 236   if (UseAESCTRIntrinsics) {
+ 237     warning("AES/CTR intrinsics are not available on this CPU");
+ 238     FLAG_SET_DEFAULT(UseAESCTRIntrinsics, false);
+ 239   }
+ 240 
+ 241   if (UseGHASHIntrinsics) {
+ 242     warning("GHASH intrinsics are not available on this CPU");
+ 243     FLAG_SET_DEFAULT(UseGHASHIntrinsics, false);
+ 244   }
+ 245 
+ 246   if (FLAG_IS_DEFAULT(UseFMA)) {
+ 247     FLAG_SET_DEFAULT(UseFMA, true);
+ 248   }
+ 249 
+<span class="changed"> 250   if (UseSHA) {</span>
+
+
+
+
+
+ 251     warning("SHA instructions are not available on this CPU");
+ 252     FLAG_SET_DEFAULT(UseSHA, false);
+ 253   }
+<span class="changed"> 254   if (UseSHA1Intrinsics || UseSHA256Intrinsics || UseSHA512Intrinsics) {</span>
+<span class="changed"> 255     warning("SHA intrinsics are not available on this CPU");</span>
+
+ 256     FLAG_SET_DEFAULT(UseSHA1Intrinsics, false);
+
+
+
+
+
+
+
+
+ 257     FLAG_SET_DEFAULT(UseSHA256Intrinsics, false);
+
+
+
+
+
+
+
+
+ 258     FLAG_SET_DEFAULT(UseSHA512Intrinsics, false);
+ 259   }
+ 260 
+
+
+
+
+ 261   if (FLAG_IS_DEFAULT(UseMultiplyToLenIntrinsic)) {
+ 262     UseMultiplyToLenIntrinsic = true;
+ 263   }
+ 264   if (FLAG_IS_DEFAULT(UseMontgomeryMultiplyIntrinsic)) {
+ 265     UseMontgomeryMultiplyIntrinsic = true;
+ 266   }
+ 267   if (FLAG_IS_DEFAULT(UseMontgomerySquareIntrinsic)) {
+ 268     UseMontgomerySquareIntrinsic = true;
+ 269   }
+ 270 
+ 271   if (UseVectorizedMismatchIntrinsic) {
+ 272     warning("UseVectorizedMismatchIntrinsic specified, but not available on this CPU.");
+ 273     FLAG_SET_DEFAULT(UseVectorizedMismatchIntrinsic, false);
+ 274   }
+ 275 
+ 276 
+ 277   // Adjust RTM (Restricted Transactional Memory) flags.
+ 278   if (UseRTMLocking) {
+ 279     // If CPU or OS are too old:
+ 280     // Can't continue because UseRTMLocking affects UseBiasedLocking flag
+
+</pre><hr></hr><pre>
+ 640   // Keep R3_ARG1 unmodified, it contains &amp;field (see below).
+ 641   // Keep R4_ARG2 unmodified, it contains offset = 0 (see below).
+ 642   a-&gt;fsqrt(F3, F4);                            // code[0]  -&gt; fsqrt_m
+ 643   a-&gt;fsqrts(F3, F4);                           // code[1]  -&gt; fsqrts_m
+ 644   a-&gt;isel(R7, R5, R6, 0);                      // code[2]  -&gt; isel_m
+ 645   a-&gt;ldarx_unchecked(R7, R3_ARG1, R4_ARG2, 1); // code[3]  -&gt; lxarx_m
+ 646   a-&gt;cmpb(R7, R5, R6);                         // code[4]  -&gt; cmpb
+ 647   a-&gt;popcntb(R7, R5);                          // code[5]  -&gt; popcntb
+ 648   a-&gt;popcntw(R7, R5);                          // code[6]  -&gt; popcntw
+ 649   a-&gt;fcfids(F3, F4);                           // code[7]  -&gt; fcfids
+ 650   a-&gt;vand(VR0, VR0, VR0);                      // code[8]  -&gt; vand
+ 651   // arg0 of lqarx must be an even register, (arg1 + arg2) must be a multiple of 16
+ 652   a-&gt;lqarx_unchecked(R6, R3_ARG1, R4_ARG2, 1); // code[9]  -&gt; lqarx_m
+ 653   a-&gt;vcipher(VR0, VR1, VR2);                   // code[10] -&gt; vcipher
+ 654   a-&gt;vpmsumb(VR0, VR1, VR2);                   // code[11] -&gt; vpmsumb
+ 655   a-&gt;tcheck(0);                                // code[12] -&gt; tcheck
+ 656   a-&gt;mfdscr(R0);                               // code[13] -&gt; mfdscr
+ 657   a-&gt;lxvd2x(VSR0, R3_ARG1);                    // code[14] -&gt; vsx
+ 658   a-&gt;ldbrx(R7, R3_ARG1, R4_ARG2);              // code[15] -&gt; ldbrx
+ 659   a-&gt;stdbrx(R7, R3_ARG1, R4_ARG2);             // code[16] -&gt; stdbrx
+
+ 660   a-&gt;blr();
+ 661 
+ 662   // Emit function to set one cache line to zero. Emit function descriptor and get pointer to it.
+ 663   void (*zero_cacheline_func_ptr)(char*) = (void(*)(char*))(void *)a-&gt;function_entry();
+ 664   a-&gt;dcbz(R3_ARG1); // R3_ARG1 = addr
+ 665   a-&gt;blr();
+ 666 
+ 667   uint32_t *code_end = (uint32_t *)a-&gt;pc();
+ 668   a-&gt;flush();
+ 669   _features = VM_Version::unknown_m;
+ 670 
+ 671   // Print the detection code.
+ 672   if (PrintAssembly) {
+ 673     ttyLocker ttyl;
+ 674     tty-&gt;print_cr("Decoding cpu-feature detection stub at " INTPTR_FORMAT " before execution:", p2i(code));
+ 675     Disassembler::decode((u_char*)code, (u_char*)code_end, tty);
+ 676   }
+ 677 
+ 678   // Measure cache line size.
+ 679   memset(test_area, 0xFF, BUFFER_SIZE); // Fill test area with 0xFF.
+
+</pre><hr></hr><pre>
+ 691 
+ 692   // determine which instructions are legal.
+ 693   int feature_cntr = 0;
+ 694   if (code[feature_cntr++]) features |= fsqrt_m;
+ 695   if (code[feature_cntr++]) features |= fsqrts_m;
+ 696   if (code[feature_cntr++]) features |= isel_m;
+ 697   if (code[feature_cntr++]) features |= lxarxeh_m;
+ 698   if (code[feature_cntr++]) features |= cmpb_m;
+ 699   if (code[feature_cntr++]) features |= popcntb_m;
+ 700   if (code[feature_cntr++]) features |= popcntw_m;
+ 701   if (code[feature_cntr++]) features |= fcfids_m;
+ 702   if (code[feature_cntr++]) features |= vand_m;
+ 703   if (code[feature_cntr++]) features |= lqarx_m;
+ 704   if (code[feature_cntr++]) features |= vcipher_m;
+ 705   if (code[feature_cntr++]) features |= vpmsumb_m;
+ 706   if (code[feature_cntr++]) features |= tcheck_m;
+ 707   if (code[feature_cntr++]) features |= mfdscr_m;
+ 708   if (code[feature_cntr++]) features |= vsx_m;
+ 709   if (code[feature_cntr++]) features |= ldbrx_m;
+ 710   if (code[feature_cntr++]) features |= stdbrx_m;
+
+ 711 
+ 712   // Print the detection code.
+ 713   if (PrintAssembly) {
+ 714     ttyLocker ttyl;
+ 715     tty-&gt;print_cr("Decoding cpu-feature detection stub at " INTPTR_FORMAT " after execution:", p2i(code));
+ 716     Disassembler::decode((u_char*)code, (u_char*)code_end, tty);
+ 717   }
+ 718 
+ 719   _features = features;
+ 720 }
+ 721 
+ 722 // Power 8: Configure Data Stream Control Register.
+ 723 void VM_Version::config_dscr() {
+ 724   // 7 InstWords for each call (function descriptor + blr instruction).
+ 725   const int code_size = (2+2*7)*BytesPerInstWord;
+ 726 
+ 727   // Allocate space for the code.
+ 728   ResourceMark rm;
+ 729   CodeBuffer cb("config_dscr", code_size, 0);
+ 730   MacroAssembler* a = new MacroAssembler(&amp;cb);
+
+</pre><hr></hr>
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+  96 
+  97 #ifdef COMPILER2
+  98   if (!UseSIGTRAP) {
+  99     MSG(TrapBasedRangeChecks);
+ 100     FLAG_SET_ERGO(bool, TrapBasedRangeChecks, false);
+ 101   }
+ 102 
+ 103   // On Power6 test for section size.
+ 104   if (PowerArchitecturePPC64 == 6) {
+ 105     determine_section_size();
+ 106   // TODO: PPC port } else {
+ 107   // TODO: PPC port PdScheduling::power6SectorSize = 0x20;
+ 108   }
+ 109 
+ 110   MaxVectorSize = 8;
+ 111 #endif
+ 112 
+ 113   // Create and print feature-string.
+ 114   char buf[(num_features+1) * 16]; // Max 16 chars per feature.
+ 115   jio_snprintf(buf, sizeof(buf),
+<span class="changed"> 116                "ppc64%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s",</span>
+ 117                (has_fsqrt()   ? " fsqrt"   : ""),
+ 118                (has_isel()    ? " isel"    : ""),
+ 119                (has_lxarxeh() ? " lxarxeh" : ""),
+ 120                (has_cmpb()    ? " cmpb"    : ""),
+ 121                //(has_mftgpr()? " mftgpr"  : ""),
+ 122                (has_popcntb() ? " popcntb" : ""),
+ 123                (has_popcntw() ? " popcntw" : ""),
+ 124                (has_fcfids()  ? " fcfids"  : ""),
+ 125                (has_vand()    ? " vand"    : ""),
+ 126                (has_lqarx()   ? " lqarx"   : ""),
+ 127                (has_vcipher() ? " aes"     : ""),
+ 128                (has_vpmsumb() ? " vpmsumb" : ""),
+ 129                (has_tcheck()  ? " tcheck"  : ""),
+ 130                (has_mfdscr()  ? " mfdscr"  : ""),
+ 131                (has_vsx()     ? " vsx"     : ""),
+ 132                (has_ldbrx()   ? " ldbrx"   : ""),
+<span class="changed"> 133                (has_stdbrx()  ? " stdbrx"  : ""),</span>
+<span class="changed"> 134                (has_vshasig() ? " sha"     : "")</span>
+ 135                // Make sure number of %s matches num_features!
+ 136               );
+ 137   _features_string = os::strdup(buf);
+ 138   if (Verbose) {
+ 139     print_features();
+ 140   }
+ 141 
+ 142   // PPC64 supports 8-byte compare-exchange operations (see
+ 143   // Atomic::cmpxchg and StubGenerator::generate_atomic_cmpxchg_ptr)
+ 144   // and 'atomic long memory ops' (see Unsafe_GetLongVolatile).
+ 145   _supports_cx8 = true;
+ 146 
+ 147   // Used by C1.
+ 148   _supports_atomic_getset4 = true;
+ 149   _supports_atomic_getadd4 = true;
+ 150   _supports_atomic_getset8 = true;
+ 151   _supports_atomic_getadd8 = true;
+ 152 
+ 153   UseSSE = 0; // Only on x86 and x64
+ 154 
+
+</pre><hr></hr><pre>
+ 231     if (!FLAG_IS_DEFAULT(UseAESIntrinsics))
+ 232       warning("AES intrinsics are not available on this CPU");
+ 233     FLAG_SET_DEFAULT(UseAESIntrinsics, false);
+ 234   }
+ 235 #endif
+ 236 
+ 237   if (UseAESCTRIntrinsics) {
+ 238     warning("AES/CTR intrinsics are not available on this CPU");
+ 239     FLAG_SET_DEFAULT(UseAESCTRIntrinsics, false);
+ 240   }
+ 241 
+ 242   if (UseGHASHIntrinsics) {
+ 243     warning("GHASH intrinsics are not available on this CPU");
+ 244     FLAG_SET_DEFAULT(UseGHASHIntrinsics, false);
+ 245   }
+ 246 
+ 247   if (FLAG_IS_DEFAULT(UseFMA)) {
+ 248     FLAG_SET_DEFAULT(UseFMA, true);
+ 249   }
+ 250 
+<span class="changed"> 251   if (has_vshasig()) {</span>
+<span class="changed"> 252     if (FLAG_IS_DEFAULT(UseSHA)) {</span>
+<span class="changed"> 253       UseSHA = true;</span>
+<span class="changed"> 254     }</span>
+<span class="changed"> 255   } else if (UseSHA) {</span>
+<span class="changed"> 256     if (!FLAG_IS_DEFAULT(UseSHA))</span>
+ 257       warning("SHA instructions are not available on this CPU");
+ 258     FLAG_SET_DEFAULT(UseSHA, false);
+ 259   }
+<span class="changed"> 260 </span>
+<span class="changed"> 261   if (UseSHA1Intrinsics) {</span>
+<span class="changed"> 262     warning("Intrinsics for SHA-1 crypto hash functions not available on this CPU.");</span>
+ 263     FLAG_SET_DEFAULT(UseSHA1Intrinsics, false);
+<span class="new"> 264   }</span>
+<span class="new"> 265 </span>
+<span class="new"> 266   if (UseSHA &amp;&amp; has_vshasig()) {</span>
+<span class="new"> 267     if (FLAG_IS_DEFAULT(UseSHA256Intrinsics)) {</span>
+<span class="new"> 268       FLAG_SET_DEFAULT(UseSHA256Intrinsics, true);</span>
+<span class="new"> 269     }</span>
+<span class="new"> 270   } else if (UseSHA256Intrinsics) {</span>
+<span class="new"> 271     warning("Intrinsics for SHA-224 and SHA-256 crypto hash functions not available on this CPU.");</span>
+ 272     FLAG_SET_DEFAULT(UseSHA256Intrinsics, false);
+<span class="new"> 273   }</span>
+<span class="new"> 274 </span>
+<span class="new"> 275   if (UseSHA &amp;&amp; has_vshasig()) {</span>
+<span class="new"> 276     if (FLAG_IS_DEFAULT(UseSHA512Intrinsics)) {</span>
+<span class="new"> 277       FLAG_SET_DEFAULT(UseSHA512Intrinsics, true);</span>
+<span class="new"> 278     }</span>
+<span class="new"> 279   } else if (UseSHA512Intrinsics) {</span>
+<span class="new"> 280     warning("Intrinsics for SHA-384 and SHA-512 crypto hash functions not available on this CPU.");</span>
+ 281     FLAG_SET_DEFAULT(UseSHA512Intrinsics, false);
+ 282   }
+ 283 
+<span class="new"> 284   if (!(UseSHA1Intrinsics || UseSHA256Intrinsics || UseSHA512Intrinsics)) {</span>
+<span class="new"> 285     FLAG_SET_DEFAULT(UseSHA, false);</span>
+<span class="new"> 286   }</span>
+<span class="new"> 287 </span>
+ 288   if (FLAG_IS_DEFAULT(UseMultiplyToLenIntrinsic)) {
+ 289     UseMultiplyToLenIntrinsic = true;
+ 290   }
+ 291   if (FLAG_IS_DEFAULT(UseMontgomeryMultiplyIntrinsic)) {
+ 292     UseMontgomeryMultiplyIntrinsic = true;
+ 293   }
+ 294   if (FLAG_IS_DEFAULT(UseMontgomerySquareIntrinsic)) {
+ 295     UseMontgomerySquareIntrinsic = true;
+ 296   }
+ 297 
+ 298   if (UseVectorizedMismatchIntrinsic) {
+ 299     warning("UseVectorizedMismatchIntrinsic specified, but not available on this CPU.");
+ 300     FLAG_SET_DEFAULT(UseVectorizedMismatchIntrinsic, false);
+ 301   }
+ 302 
+ 303 
+ 304   // Adjust RTM (Restricted Transactional Memory) flags.
+ 305   if (UseRTMLocking) {
+ 306     // If CPU or OS are too old:
+ 307     // Can't continue because UseRTMLocking affects UseBiasedLocking flag
+
+</pre><hr></hr><pre>
+ 667   // Keep R3_ARG1 unmodified, it contains &amp;field (see below).
+ 668   // Keep R4_ARG2 unmodified, it contains offset = 0 (see below).
+ 669   a-&gt;fsqrt(F3, F4);                            // code[0]  -&gt; fsqrt_m
+ 670   a-&gt;fsqrts(F3, F4);                           // code[1]  -&gt; fsqrts_m
+ 671   a-&gt;isel(R7, R5, R6, 0);                      // code[2]  -&gt; isel_m
+ 672   a-&gt;ldarx_unchecked(R7, R3_ARG1, R4_ARG2, 1); // code[3]  -&gt; lxarx_m
+ 673   a-&gt;cmpb(R7, R5, R6);                         // code[4]  -&gt; cmpb
+ 674   a-&gt;popcntb(R7, R5);                          // code[5]  -&gt; popcntb
+ 675   a-&gt;popcntw(R7, R5);                          // code[6]  -&gt; popcntw
+ 676   a-&gt;fcfids(F3, F4);                           // code[7]  -&gt; fcfids
+ 677   a-&gt;vand(VR0, VR0, VR0);                      // code[8]  -&gt; vand
+ 678   // arg0 of lqarx must be an even register, (arg1 + arg2) must be a multiple of 16
+ 679   a-&gt;lqarx_unchecked(R6, R3_ARG1, R4_ARG2, 1); // code[9]  -&gt; lqarx_m
+ 680   a-&gt;vcipher(VR0, VR1, VR2);                   // code[10] -&gt; vcipher
+ 681   a-&gt;vpmsumb(VR0, VR1, VR2);                   // code[11] -&gt; vpmsumb
+ 682   a-&gt;tcheck(0);                                // code[12] -&gt; tcheck
+ 683   a-&gt;mfdscr(R0);                               // code[13] -&gt; mfdscr
+ 684   a-&gt;lxvd2x(VSR0, R3_ARG1);                    // code[14] -&gt; vsx
+ 685   a-&gt;ldbrx(R7, R3_ARG1, R4_ARG2);              // code[15] -&gt; ldbrx
+ 686   a-&gt;stdbrx(R7, R3_ARG1, R4_ARG2);             // code[16] -&gt; stdbrx
+<span class="new"> 687   a-&gt;vshasigmaw(VR0, VR1, 1, 0xF);             // code[17] -&gt; vshasig</span>
+ 688   a-&gt;blr();
+ 689 
+ 690   // Emit function to set one cache line to zero. Emit function descriptor and get pointer to it.
+ 691   void (*zero_cacheline_func_ptr)(char*) = (void(*)(char*))(void *)a-&gt;function_entry();
+ 692   a-&gt;dcbz(R3_ARG1); // R3_ARG1 = addr
+ 693   a-&gt;blr();
+ 694 
+ 695   uint32_t *code_end = (uint32_t *)a-&gt;pc();
+ 696   a-&gt;flush();
+ 697   _features = VM_Version::unknown_m;
+ 698 
+ 699   // Print the detection code.
+ 700   if (PrintAssembly) {
+ 701     ttyLocker ttyl;
+ 702     tty-&gt;print_cr("Decoding cpu-feature detection stub at " INTPTR_FORMAT " before execution:", p2i(code));
+ 703     Disassembler::decode((u_char*)code, (u_char*)code_end, tty);
+ 704   }
+ 705 
+ 706   // Measure cache line size.
+ 707   memset(test_area, 0xFF, BUFFER_SIZE); // Fill test area with 0xFF.
+
+</pre><hr></hr><pre>
+ 719 
+ 720   // determine which instructions are legal.
+ 721   int feature_cntr = 0;
+ 722   if (code[feature_cntr++]) features |= fsqrt_m;
+ 723   if (code[feature_cntr++]) features |= fsqrts_m;
+ 724   if (code[feature_cntr++]) features |= isel_m;
+ 725   if (code[feature_cntr++]) features |= lxarxeh_m;
+ 726   if (code[feature_cntr++]) features |= cmpb_m;
+ 727   if (code[feature_cntr++]) features |= popcntb_m;
+ 728   if (code[feature_cntr++]) features |= popcntw_m;
+ 729   if (code[feature_cntr++]) features |= fcfids_m;
+ 730   if (code[feature_cntr++]) features |= vand_m;
+ 731   if (code[feature_cntr++]) features |= lqarx_m;
+ 732   if (code[feature_cntr++]) features |= vcipher_m;
+ 733   if (code[feature_cntr++]) features |= vpmsumb_m;
+ 734   if (code[feature_cntr++]) features |= tcheck_m;
+ 735   if (code[feature_cntr++]) features |= mfdscr_m;
+ 736   if (code[feature_cntr++]) features |= vsx_m;
+ 737   if (code[feature_cntr++]) features |= ldbrx_m;
+ 738   if (code[feature_cntr++]) features |= stdbrx_m;
+<span class="new"> 739   if (code[feature_cntr++]) features |= vshasig_m;</span>
+ 740 
+ 741   // Print the detection code.
+ 742   if (PrintAssembly) {
+ 743     ttyLocker ttyl;
+ 744     tty-&gt;print_cr("Decoding cpu-feature detection stub at " INTPTR_FORMAT " after execution:", p2i(code));
+ 745     Disassembler::decode((u_char*)code, (u_char*)code_end, tty);
+ 746   }
+ 747 
+ 748   _features = features;
+ 749 }
+ 750 
+ 751 // Power 8: Configure Data Stream Control Register.
+ 752 void VM_Version::config_dscr() {
+ 753   // 7 InstWords for each call (function descriptor + blr instruction).
+ 754   const int code_size = (2+2*7)*BytesPerInstWord;
+ 755 
+ 756   // Allocate space for the code.
+ 757   ResourceMark rm;
+ 758   CodeBuffer cb("config_dscr", code_size, 0);
+ 759   MacroAssembler* a = new MacroAssembler(&amp;cb);
+
+</pre><hr></hr>
+</pre></td>
+</tr></table>
+<center><a href='../../../../src/cpu/ppc/vm/stubRoutines_ppc.hpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/vm_version_ppc.hpp.sdiff.html' target='_top'>next &gt</a></center>
+</body></html>

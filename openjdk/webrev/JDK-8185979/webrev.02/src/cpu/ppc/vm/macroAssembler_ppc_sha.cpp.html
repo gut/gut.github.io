@@ -1,0 +1,1222 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>New src/cpu/ppc/vm/macroAssembler_ppc_sha.cpp</title>
+<body id="SUNWwebrev">
+<pre>
+   1 // Copyright (c) 2017 Instituto de Pesquisas Eldorado. All rights reserved.
+   2 // DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+   3 //
+   4 // This code is free software; you can redistribute it and/or modify it
+   5 // under the terms of the GNU General Public License version 2 only, as
+   6 // published by the Free Software Foundation.
+   7 //
+   8 // This code is distributed in the hope that it will be useful, but WITHOUT
+   9 // ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  10 // FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+  11 // version 2 for more details (a copy is included in the LICENSE file that
+  12 // accompanied this code).
+  13 //
+  14 // You should have received a copy of the GNU General Public License version
+  15 // 2 along with this work; if not, write to the Free Software Foundation,
+  16 // Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+  17 //
+  18 // Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+  19 // or visit www.oracle.com if you need additional information or have any
+  20 // questions.
+  21 
+  22 // This implementation was contributed by the following people:
+  23 // Bruno Rosa &lt;bruno.rosa@eldorado.org.br&gt;
+  24 // Gustavo Serra Scalet &lt;gustavo.scalet@eldorado.org.br&gt;
+  25 // Igor Nunes &lt;igor.nunes@eldorado.org.br&gt;
+  26 
+  27 // Support to Big Endian by:
+  28 // Martin Doerr &lt;martin.doerr@sap.com&gt;
+  29 
+  30 // Implemented according to "Descriptions of SHA-256, SHA-384, and SHA-512"
+  31 // (http://www.iwar.org.uk/comsec/resources/cipher/sha256-384-512.pdf).
+  32 
+  33 #include "asm/macroAssembler.inline.hpp"
+  34 #include "runtime/stubRoutines.hpp"
+  35 
+  36 /**********************************************************************
+  37  * SHA 256
+  38  *********************************************************************/
+  39 
+  40 void MacroAssembler::sha256_deque(const VectorRegister src,
+  41                                   const VectorRegister dst1,
+  42                                   const VectorRegister dst2,
+  43                                   const VectorRegister dst3) {
+  44   vsldoi (dst1, src, src, 12);
+  45   vsldoi (dst2, src, src, 8);
+  46   vsldoi (dst3, src, src, 4);
+  47 }
+  48 
+  49 void MacroAssembler::sha256_round(const VectorRegister* hs,
+  50                                   const int total_hs,
+  51                                   int&amp; h_cnt,
+  52                                   const VectorRegister kpw) {
+  53   // convenience registers: cycle from 0-7 downwards
+  54   const VectorRegister a = hs[(total_hs + 0 - (h_cnt % total_hs)) % total_hs];
+  55   const VectorRegister b = hs[(total_hs + 1 - (h_cnt % total_hs)) % total_hs];
+  56   const VectorRegister c = hs[(total_hs + 2 - (h_cnt % total_hs)) % total_hs];
+  57   const VectorRegister d = hs[(total_hs + 3 - (h_cnt % total_hs)) % total_hs];
+  58   const VectorRegister e = hs[(total_hs + 4 - (h_cnt % total_hs)) % total_hs];
+  59   const VectorRegister f = hs[(total_hs + 5 - (h_cnt % total_hs)) % total_hs];
+  60   const VectorRegister g = hs[(total_hs + 6 - (h_cnt % total_hs)) % total_hs];
+  61   const VectorRegister h = hs[(total_hs + 7 - (h_cnt % total_hs)) % total_hs];
+  62   // temporaries
+  63   VectorRegister ch  = VR0;
+  64   VectorRegister maj = VR1;
+  65   VectorRegister bsa = VR2;
+  66   VectorRegister bse = VR3;
+  67   VectorRegister vt0 = VR4;
+  68   VectorRegister vt1 = VR5;
+  69   VectorRegister vt2 = VR6;
+  70   VectorRegister vt3 = VR7;
+  71 
+  72   vsel       (ch,  g,   f, e);
+  73   vxor       (maj, a,   b);
+  74   vshasigmaw (bse, e,   1, 0xf);
+  75   vadduwm    (vt2, ch,  kpw);
+  76   vadduwm    (vt1, h,   bse);
+  77   vsel       (maj, b,   c, maj);
+  78   vadduwm    (vt3, vt1, vt2);
+  79   vshasigmaw (bsa, a,   1, 0);
+  80   vadduwm    (vt0, bsa, maj);
+  81 
+  82   vadduwm    (d,   d,   vt3);
+  83   vadduwm    (h,   vt3, vt0);
+  84 
+  85   // advance vector pointer to the next iteration
+  86   h_cnt++;
+  87 }
+  88 
+  89 void MacroAssembler::sha256_load_h_vec(const VectorRegister a,
+  90                                        const VectorRegister e,
+  91                                        const Register hptr) {
+  92   // temporaries
+  93   Register tmp = R8;
+  94   VectorRegister vt0 = VR0;
+  95   VectorRegister vRb = VR6;
+  96   // labels
+  97   Label sha256_aligned, sha256_load_end;;
+  98 
+  99   andi_  (tmp,  hptr, 0xf);
+ 100   addi   (tmp,  hptr, 16);
+ 101   beq    (CCR0, sha256_aligned);
+ 102 
+ 103   // handle unaligned accesses
+ 104   lvx    (a,    hptr);
+ 105   lvsr   (vRb,  hptr);
+ 106 
+ 107   lvx    (e,    tmp);
+ 108   addi   (tmp,  tmp,  16);
+ 109   vec_perm(a,   e,    vRb);
+ 110 
+ 111   lvx    (vt0,  tmp);
+ 112   vec_perm(e,   vt0,  vRb);
+ 113   b      (sha256_load_end);
+ 114 
+ 115   // aligned accesses
+ 116   bind(sha256_aligned);
+ 117   lvx    (a,    hptr);
+ 118   addi   (tmp,  hptr, 16);
+ 119   lvx    (e,    tmp);
+ 120 
+ 121   bind(sha256_load_end);
+ 122 }
+ 123 
+ 124 void MacroAssembler::sha256_load_w_plus_k_vec(const Register buf_in,
+ 125                                               const VectorRegister* ws,
+ 126                                               const int total_ws,
+ 127                                               const Register k,
+ 128                                               const VectorRegister* kpws,
+ 129                                               const int total_kpws) {
+ 130   Label w_aligned, after_w_load;
+ 131 
+ 132   Register tmp       = R8;
+ 133   VectorRegister vt0 = VR0;
+ 134   VectorRegister vt1 = VR1;
+ 135   VectorRegister vRb = VR6;
+ 136 
+ 137   andi_ (tmp, buf_in, 0xF);
+ 138   beq   (CCR0, w_aligned); // address ends with 0x0, not 0x8
+ 139 
+ 140   // deal with unaligned addresses
+ 141   lvx    (ws[0], buf_in);
+ 142   addi   (buf_in, buf_in, 16);
+ 143   lvsr   (vRb, buf_in);
+ 144 
+ 145   for (int n = 1; n &lt; total_ws; n++) {
+ 146     VectorRegister w_cur = ws[n];
+ 147     VectorRegister w_prev = ws[n-1];
+ 148 
+ 149     lvx  (w_cur, buf_in);
+ 150     addi (buf_in, buf_in, 16);
+ 151     vec_perm(w_prev, w_cur, vRb);
+ 152   }
+ 153 
+ 154   lvx    (vt0, buf_in);
+ 155   vec_perm(ws[total_ws-1], vt0, vRb);
+ 156 
+ 157   b      (after_w_load);
+ 158 
+ 159   bind(w_aligned);
+ 160 
+ 161   // deal with aligned addresses
+ 162   for (int n = 0; n &lt; total_ws; n++) {
+ 163     VectorRegister w = ws[n];
+ 164 
+ 165     lvx  (w, buf_in);
+ 166     addi (buf_in, buf_in, 16);
+ 167   }
+ 168 
+ 169   bind(after_w_load);
+ 170 
+ 171 #if defined(VM_LITTLE_ENDIAN)
+ 172   // Byte swapping within int values
+ 173   li       (tmp, 8);
+ 174   lvsl     (vt0, tmp);
+ 175   vspltisb (vt1, 0xb);
+ 176   vxor     (vt1, vt0, vt1);
+ 177   for (int n = 0; n &lt; total_ws; n++) {
+ 178     VectorRegister w = ws[n];
+ 179     vec_perm(w, w, vt1);
+ 180   }
+ 181 #endif
+ 182 
+ 183   // Loading k, which is always aligned to 16-bytes
+ 184   lvx    (kpws[0], k);
+ 185   addi   (tmp, k, 16);
+ 186   for (int n = 1; n &lt; total_kpws-1; n++) {
+ 187     VectorRegister kpw = kpws[n];
+ 188 
+ 189     lvx  (kpw, tmp);
+ 190     addi (tmp, tmp, 16);
+ 191   }
+ 192   lvx  (kpws[total_kpws-1], tmp);
+ 193 
+ 194   // Add w to K
+ 195   assert(total_ws == total_kpws, "Redesign the loop below");
+ 196   for (int n = 0; n &lt; total_kpws; n++) {
+ 197     VectorRegister kpw = kpws[n];
+ 198     VectorRegister w   = ws[n];
+ 199 
+ 200     vadduwm  (kpw, kpw, w);
+ 201   }
+ 202 }
+ 203 
+ 204 void MacroAssembler::sha256_calc_4w(const VectorRegister w0,
+ 205                                     const VectorRegister w1,
+ 206                                     const VectorRegister w2,
+ 207                                     const VectorRegister w3,
+ 208                                     const VectorRegister kpw0,
+ 209                                     const VectorRegister kpw1,
+ 210                                     const VectorRegister kpw2,
+ 211                                     const VectorRegister kpw3,
+ 212                                     const Register j,
+ 213                                     const Register k) {
+ 214   // Temporaries
+ 215   const VectorRegister  vt0  = VR0;
+ 216   const VectorRegister  vt1  = VR1;
+ 217   const VectorSRegister vsrt1 = vt1-&gt;to_vsr();
+ 218   const VectorRegister  vt2  = VR2;
+ 219   const VectorRegister  vt3  = VR3;
+ 220   const VectorSRegister vst3 = vt3-&gt;to_vsr();
+ 221   const VectorRegister  vt4  = VR4;
+ 222 
+ 223   // load to k[j]
+ 224   lvx        (vt0, j,   k);
+ 225 
+ 226   // advance j
+ 227   addi       (j,   j,   16); // 16 bytes were read
+ 228 
+ 229 #if defined(VM_LITTLE_ENDIAN)
+ 230   // b = w[j-15], w[j-14], w[j-13], w[j-12]
+ 231   vsldoi     (vt1, w1,  w0, 12);
+ 232 
+ 233   // c = w[j-7], w[j-6], w[j-5], w[j-4]
+ 234   vsldoi     (vt2, w3,  w2, 12);
+ 235 
+ 236 #else
+ 237   // b = w[j-15], w[j-14], w[j-13], w[j-12]
+ 238   vsldoi     (vt1, w0,  w1, 4);
+ 239 
+ 240   // c = w[j-7], w[j-6], w[j-5], w[j-4]
+ 241   vsldoi     (vt2, w2,  w3, 4);
+ 242 #endif
+ 243 
+ 244   // d = w[j-2], w[j-1], w[j-4], w[j-3]
+ 245   vsldoi     (vt3, w3,  w3, 8);
+ 246 
+ 247   // b = s0(w[j-15]) , s0(w[j-14]) , s0(w[j-13]) , s0(w[j-12])
+ 248   vshasigmaw (vt1, vt1, 0,  0);
+ 249 
+ 250   // d = s1(w[j-2]) , s1(w[j-1]) , s1(w[j-4]) , s1(w[j-3])
+ 251   vshasigmaw (vt3, vt3, 0,  0xf);
+ 252 
+ 253   // c = s0(w[j-15]) + w[j-7],
+ 254   //     s0(w[j-14]) + w[j-6],
+ 255   //     s0(w[j-13]) + w[j-5],
+ 256   //     s0(w[j-12]) + w[j-4]
+ 257   vadduwm    (vt2, vt1, vt2);
+ 258 
+ 259   // c = s0(w[j-15]) + w[j-7] + w[j-16],
+ 260   //     s0(w[j-14]) + w[j-6] + w[j-15],
+ 261   //     s0(w[j-13]) + w[j-5] + w[j-14],
+ 262   //     s0(w[j-12]) + w[j-4] + w[j-13]
+ 263   vadduwm    (vt2, vt2, w0);
+ 264 
+ 265   // e = s0(w[j-15]) + w[j-7] + w[j-16] + s1(w[j-2]), // w[j]
+ 266   //     s0(w[j-14]) + w[j-6] + w[j-15] + s1(w[j-1]), // w[j+1]
+ 267   //     s0(w[j-13]) + w[j-5] + w[j-14] + s1(w[j-4]), // UNDEFINED
+ 268   //     s0(w[j-12]) + w[j-4] + w[j-13] + s1(w[j-3])  // UNDEFINED
+ 269   vadduwm    (vt4, vt2, vt3);
+ 270 
+ 271   // At this point, e[0] and e[1] are the correct values to be stored at w[j]
+ 272   // and w[j+1].
+ 273   // e[2] and e[3] are not considered.
+ 274   // b = s1(w[j]) , s1(s(w[j+1]) , UNDEFINED , UNDEFINED
+ 275   vshasigmaw (vt1, vt4, 0,  0xf);
+ 276 
+ 277   // v5 = s1(w[j-2]) , s1(w[j-1]) , s1(w[j]) , s1(w[j+1])
+ 278 #if defined(VM_LITTLE_ENDIAN)
+ 279   xxmrgld    (vst3, vsrt1, vst3);
+ 280 #else
+ 281   xxmrghd    (vst3, vst3, vsrt1);
+ 282 #endif
+ 283 
+ 284   // c = s0(w[j-15]) + w[j-7] + w[j-16] + s1(w[j-2]), // w[j]
+ 285   //     s0(w[j-14]) + w[j-6] + w[j-15] + s1(w[j-1]), // w[j+1]
+ 286   //     s0(w[j-13]) + w[j-5] + w[j-14] + s1(w[j]),   // w[j+2]
+ 287   //     s0(w[j-12]) + w[j-4] + w[j-13] + s1(w[j+1])  // w[j+4]
+ 288   vadduwm    (vt2, vt2, vt3);
+ 289 
+ 290   // Updating w0 to w3 to hold the new previous 16 values from w.
+ 291   vmr        (w0,  w1);
+ 292   vmr        (w1,  w2);
+ 293   vmr        (w2,  w3);
+ 294   vmr        (w3,  vt2);
+ 295 
+ 296   // store k + w to v9 (4 values at once)
+ 297 #if defined(VM_LITTLE_ENDIAN)
+ 298   vadduwm    (kpw0, vt2, vt0);
+ 299 
+ 300   vsldoi     (kpw1, kpw0, kpw0, 12);
+ 301   vsldoi     (kpw2, kpw0, kpw0, 8);
+ 302   vsldoi     (kpw3, kpw0, kpw0, 4);
+ 303 #else
+ 304   vadduwm    (kpw3, vt2, vt0);
+ 305 
+ 306   vsldoi     (kpw2, kpw3, kpw3, 12);
+ 307   vsldoi     (kpw1, kpw3, kpw3, 8);
+ 308   vsldoi     (kpw0, kpw3, kpw3, 4);
+ 309 #endif
+ 310 }
+ 311 
+ 312 void MacroAssembler::sha256_update_sha_state(const VectorRegister a,
+ 313                                              const VectorRegister b_,
+ 314                                              const VectorRegister c,
+ 315                                              const VectorRegister d,
+ 316                                              const VectorRegister e,
+ 317                                              const VectorRegister f,
+ 318                                              const VectorRegister g,
+ 319                                              const VectorRegister h,
+ 320                                              const Register hptr) {
+ 321   // temporaries
+ 322   VectorRegister vt0  = VR0;
+ 323   VectorRegister vt1  = VR1;
+ 324   VectorRegister vt2  = VR2;
+ 325   VectorRegister vt3  = VR3;
+ 326   VectorRegister vt4  = VR4;
+ 327   VectorRegister vt5  = VR5;
+ 328   VectorRegister vaux = VR6;
+ 329   VectorRegister vRb  = VR6;
+ 330   Register tmp        = R8;
+ 331   Register of16       = R8;
+ 332   Register of32       = R9;
+ 333   Label state_load_aligned, after_state_load_aligned;
+ 334 
+ 335   // Load hptr
+ 336   andi_   (tmp, hptr, 0xf);
+ 337   li      (of16, 16);
+ 338   beq     (CCR0, state_load_aligned);
+ 339 
+ 340   // handle unaligned accesses
+ 341   li      (of32, 32);
+ 342   lvx     (vt0, hptr);
+ 343   lvsr    (vRb, hptr);
+ 344 
+ 345   lvx     (vt5, hptr, of16);
+ 346   vec_perm(vt0, vt5,  vRb);        // vt0 = hptr[0]..hptr[3]
+ 347 
+ 348   lvx     (vt1, hptr, of32);
+ 349   vec_perm(vt5, vt1,  vRb);        // vt5 = hptr[4]..hptr[7]
+ 350   b       (after_state_load_aligned);
+ 351 
+ 352   // aligned accesses
+ 353   bind(state_load_aligned);
+ 354   lvx     (vt0, hptr);
+ 355   lvx     (vt5, of16, hptr);
+ 356 
+ 357   bind(after_state_load_aligned);
+ 358 
+ 359 #if defined(VM_LITTLE_ENDIAN)
+ 360   vmrglw  (vt1, b_, a);            // vt1 = {a, b, ?, ?}
+ 361   vmrglw  (vt2, d, c);             // vt2 = {c, d, ?, ?}
+ 362   vmrglw  (vt3, f, e);             // vt3 = {e, f, ?, ?}
+ 363   vmrglw  (vt4, h, g);             // vt4 = {g, h, ?, ?}
+ 364   xxmrgld (vt1-&gt;to_vsr(), vt2-&gt;to_vsr(), vt1-&gt;to_vsr()); // vt1 = {a, b, c, d}
+ 365   xxmrgld (vt3-&gt;to_vsr(), vt4-&gt;to_vsr(), vt3-&gt;to_vsr()); // vt3 = {e, f, g, h}
+ 366   vadduwm (a,   vt0, vt1);         // a = {a+hptr[0], b+hptr[1], c+hptr[2], d+hptr[3]}
+ 367   vadduwm (e,   vt5, vt3);         // e = {e+hptr[4], f+hptr[5], g+hptr[6], h+hptr[7]}
+ 368 
+ 369   // Save hptr back, works for any alignment
+ 370   xxswapd (vt0-&gt;to_vsr(), a-&gt;to_vsr());
+ 371   stxvd2x (vt0-&gt;to_vsr(), hptr);
+ 372   xxswapd (vt5-&gt;to_vsr(), e-&gt;to_vsr());
+ 373   stxvd2x (vt5-&gt;to_vsr(), of16, hptr);
+ 374 #else
+ 375   vmrglw  (vt1, a, b_);            // vt1 = {a, b, ?, ?}
+ 376   vmrglw  (vt2, c, d);             // vt2 = {c, d, ?, ?}
+ 377   vmrglw  (vt3, e, f);             // vt3 = {e, f, ?, ?}
+ 378   vmrglw  (vt4, g, h);             // vt4 = {g, h, ?, ?}
+ 379   xxmrgld (vt1-&gt;to_vsr(), vt1-&gt;to_vsr(), vt2-&gt;to_vsr()); // vt1 = {a, b, c, d}
+ 380   xxmrgld (vt3-&gt;to_vsr(), vt3-&gt;to_vsr(), vt4-&gt;to_vsr()); // vt3 = {e, f, g, h}
+ 381   vadduwm (d,   vt0, vt1);         // d = {a+hptr[0], b+hptr[1], c+hptr[2], d+hptr[3]}
+ 382   vadduwm (h,   vt5, vt3);         // h = {e+hptr[4], f+hptr[5], g+hptr[6], h+hptr[7]}
+ 383 
+ 384   // Save hptr back, works for any alignment
+ 385   stxvd2x (d-&gt;to_vsr(), hptr);
+ 386   stxvd2x (h-&gt;to_vsr(), of16, hptr);
+ 387 #endif
+ 388 }
+ 389 
+ 390 
+ 391 //   R3_ARG1   - byte[]  Input string with padding but in Big Endian
+ 392 //   R4_ARG2   - int[]   SHA.state (at first, the root of primes)
+ 393 //   R5_ARG3   - int     offset
+ 394 //   R6_ARG4   - int     limit
+ 395 //
+ 396 //   Internal Register usage:
+ 397 //   R7        - k
+ 398 //   R8        - tmp | j | of16
+ 399 //   R9        - of32
+ 400 //   VR0-VR8   - ch, maj, bsa, bse, vt0-vt3 | vt0-vt5, vaux/vRb
+ 401 //   VR9-VR16  - a-h
+ 402 //   VR17-VR20 - w0-w3
+ 403 //   VR21-VR23 - vRb | vaux0-vaux2
+ 404 //   VR24-VR27 - kpw0-kpw3
+ 405 void MacroAssembler::sha256(bool multi_block) {
+ 406   static const ssize_t base_size = sizeof(uint32_t);
+ 407   static const ssize_t buf_size = 64;
+ 408   static uint32_t waux[buf_size / base_size] __attribute((aligned (16)));
+ 409   static const uint32_t round_consts[64] __attribute((aligned (16))) = {
+ 410     0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5,
+ 411     0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+ 412     0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+ 413     0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+ 414     0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
+ 415     0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+ 416     0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7,
+ 417     0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+ 418     0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+ 419     0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+ 420     0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3,
+ 421     0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+ 422     0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5,
+ 423     0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+ 424     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+ 425     0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+ 426   };
+ 427   static const uint8_t w_size = sizeof(round_consts)/sizeof(uint32_t);
+ 428 
+ 429   Register buf_in = R3_ARG1;
+ 430   Register state  = R4_ARG2;
+ 431   Register ofs    = R5_ARG3;
+ 432   Register limit  = R6_ARG4;
+ 433 
+ 434   Label sha_loop, bsw_loop, core_loop;
+ 435 
+ 436   // Save non-volatile vector registers in the red zone
+ 437   static const VectorRegister nv[] = {
+ 438     VR20, VR21, VR22, VR23, VR24, VR25, VR26, VR27/*, VR28, VR29, VR30, VR31*/
+ 439   };
+ 440   static const uint8_t nv_size = sizeof(nv) / sizeof (VectorRegister);
+ 441 
+ 442   for (int c = 0; c &lt; nv_size; c++) {
+ 443     Register tmp = R8;
+ 444     li  (tmp, (c - (nv_size)) * 16);
+ 445     stvx(nv[c], tmp, R1);
+ 446   }
+ 447 
+ 448   // Load hash state to registers
+ 449   VectorRegister a = VR9;
+ 450   VectorRegister b = VR10;
+ 451   VectorRegister c = VR11;
+ 452   VectorRegister d = VR12;
+ 453   VectorRegister e = VR13;
+ 454   VectorRegister f = VR14;
+ 455   VectorRegister g = VR15;
+ 456   VectorRegister h = VR16;
+ 457   static const VectorRegister hs[] = {a, b, c, d, e, f, g, h};
+ 458   static const int total_hs = sizeof(hs)/sizeof(VectorRegister);
+ 459   // counter for cycling through hs vector to avoid register moves between iterations
+ 460   int h_cnt = 0;
+ 461 
+ 462   // Load a-h registers from the memory pointed by state
+ 463 #if defined(VM_LITTLE_ENDIAN)
+ 464   sha256_load_h_vec(a, e, state);
+ 465 #else
+ 466   sha256_load_h_vec(d, h, state);
+ 467 #endif
+ 468 
+ 469   // keep k loaded also during MultiBlock loops
+ 470   Register k = R7;
+ 471   load_const_optimized(k, const_cast&lt;uint32_t *&gt;(round_consts), R0);
+ 472 
+ 473   // Avoiding redundant loads
+ 474   if (multi_block) {
+ 475     align(OptoLoopAlignment);
+ 476   }
+ 477   bind(sha_loop);
+ 478 #if defined(VM_LITTLE_ENDIAN)
+ 479   sha256_deque(a, b, c, d);
+ 480   sha256_deque(e, f, g, h);
+ 481 #else
+ 482   sha256_deque(d, c, b, a);
+ 483   sha256_deque(h, g, f, e);
+ 484 #endif
+ 485 
+ 486   // Load 16 elements from w out of the loop.
+ 487   // Order of the int values is Endianess specific.
+ 488   VectorRegister w0 = VR17;
+ 489   VectorRegister w1 = VR18;
+ 490   VectorRegister w2 = VR19;
+ 491   VectorRegister w3 = VR20;
+ 492   static const VectorRegister ws[] = {w0, w1, w2, w3};
+ 493   static const int total_ws = sizeof(ws)/sizeof(VectorRegister);
+ 494 
+ 495   VectorRegister kpw0 = VR24;
+ 496   VectorRegister kpw1 = VR25;
+ 497   VectorRegister kpw2 = VR26;
+ 498   VectorRegister kpw3 = VR27;
+ 499   static const VectorRegister kpws[] = {kpw0, kpw1, kpw2, kpw3};
+ 500   static const int total_kpws = sizeof(kpws)/sizeof(VectorRegister);
+ 501 
+ 502   sha256_load_w_plus_k_vec(buf_in, ws, total_ws, k, kpws, total_kpws);
+ 503 
+ 504   // Cycle through the first 16 elements
+ 505   assert(total_ws == total_kpws, "Redesign the loop below");
+ 506   for (int n = 0; n &lt; total_ws; n++) {
+ 507     VectorRegister vaux0 = VR21;
+ 508     VectorRegister vaux1 = VR22;
+ 509     VectorRegister vaux2 = VR23;
+ 510 
+ 511     sha256_deque(kpws[n], vaux0, vaux1, vaux2);
+ 512 
+ 513 #if defined(VM_LITTLE_ENDIAN)
+ 514     sha256_round(hs, total_hs, h_cnt, kpws[n]);
+ 515     sha256_round(hs, total_hs, h_cnt, vaux0);
+ 516     sha256_round(hs, total_hs, h_cnt, vaux1);
+ 517     sha256_round(hs, total_hs, h_cnt, vaux2);
+ 518 #else
+ 519     sha256_round(hs, total_hs, h_cnt, vaux2);
+ 520     sha256_round(hs, total_hs, h_cnt, vaux1);
+ 521     sha256_round(hs, total_hs, h_cnt, vaux0);
+ 522     sha256_round(hs, total_hs, h_cnt, kpws[n]);
+ 523 #endif
+ 524   }
+ 525 
+ 526   Register tmp = R8;
+ 527   // loop the 16th to the 64th iteration by 8 steps
+ 528   li   (tmp, (w_size - 16) / total_hs);
+ 529   mtctr(tmp);
+ 530 
+ 531   // j will be aligned to 4 for loading words.
+ 532   // Whenever read, advance the pointer (e.g: when j is used in a function)
+ 533   Register j = R8;
+ 534   li   (j, 16*4);
+ 535 
+ 536   align(OptoLoopAlignment);
+ 537   bind(core_loop);
+ 538 
+ 539   // due to VectorRegister rotate, always iterate in multiples of total_hs
+ 540   for (int n = 0; n &lt; total_hs/4; n++) {
+ 541     sha256_calc_4w(w0, w1, w2, w3, kpw0, kpw1, kpw2, kpw3, j, k);
+ 542     sha256_round(hs, total_hs, h_cnt, kpw0);
+ 543     sha256_round(hs, total_hs, h_cnt, kpw1);
+ 544     sha256_round(hs, total_hs, h_cnt, kpw2);
+ 545     sha256_round(hs, total_hs, h_cnt, kpw3);
+ 546   }
+ 547 
+ 548   bdnz   (core_loop);
+ 549 
+ 550   // Update hash state
+ 551   sha256_update_sha_state(a, b, c, d, e, f, g, h, state);
+ 552 
+ 553   if (multi_block) {
+ 554     // process next 1024 bit block (buf_in already updated)
+ 555     addi(ofs, ofs, buf_size);
+ 556     cmpd(CCR0, ofs, limit);
+ 557     blt(CCR0, sha_loop);
+ 558 
+ 559     // return ofs
+ 560     mr(R3_ARG1, ofs);
+ 561   }
+ 562 
+ 563   // Restore non-volatile registers
+ 564   for (int c = 0; c &lt; nv_size; c++) {
+ 565     Register tmp = R8;
+ 566     li  (tmp, (c - (nv_size)) * 16);
+ 567     lvx(nv[c], tmp, R1);
+ 568   }
+ 569 }
+ 570 
+ 571 
+ 572 /**********************************************************************
+ 573  * SHA 512
+ 574  *********************************************************************/
+ 575 
+ 576 void MacroAssembler::sha512_load_w_vec(const Register buf_in,
+ 577                                        const VectorRegister* ws,
+ 578                                        const int total_ws) {
+ 579   Register tmp       = R8;
+ 580   VectorRegister vRb = VR8;
+ 581   VectorRegister aux = VR9;
+ 582   Label is_aligned, after_alignment;
+ 583 
+ 584   andi_  (tmp, buf_in, 0xF);
+ 585   beq    (CCR0, is_aligned); // address ends with 0x0, not 0x8
+ 586 
+ 587   // deal with unaligned addresses
+ 588   lvx    (ws[0], buf_in);
+ 589   addi   (buf_in, buf_in, 16);
+ 590   lvsr   (vRb, buf_in);
+ 591 
+ 592   for (int n = 1; n &lt; total_ws; n++) {
+ 593     VectorRegister w_cur = ws[n];
+ 594     VectorRegister w_prev = ws[n-1];
+ 595 
+ 596     lvx  (w_cur, buf_in);
+ 597     addi (buf_in, buf_in, 16);
+ 598     vec_perm(w_prev, w_cur, vRb);
+ 599   }
+ 600 
+ 601   lvx    (aux, buf_in);
+ 602   vec_perm(ws[total_ws-1], aux, vRb);
+ 603 
+ 604   b      (after_alignment);
+ 605 
+ 606   bind(is_aligned);
+ 607 
+ 608   for (int n = 0; n &lt; total_ws; n++) {
+ 609     VectorRegister w = ws[n];
+ 610 
+ 611     lvx  (w, buf_in);
+ 612     addi (buf_in, buf_in, 16);
+ 613   }
+ 614 
+ 615   bind(after_alignment);
+ 616 }
+ 617 
+ 618 // Update hash state
+ 619 void MacroAssembler::sha512_update_sha_state(const Register state,
+ 620                                              const VectorRegister* hs,
+ 621                                              const int total_hs) {
+ 622 
+ 623 #if defined(VM_LITTLE_ENDIAN)
+ 624   int start_idx = 0;
+ 625 #else
+ 626   int start_idx = 1;
+ 627 #endif
+ 628 
+ 629   // load initial hash from the memory pointed by state
+ 630   VectorRegister ini_a = VR10;
+ 631   VectorRegister ini_c = VR12;
+ 632   VectorRegister ini_e = VR14;
+ 633   VectorRegister ini_g = VR16;
+ 634   static const VectorRegister inis[] = {ini_a, ini_c, ini_e, ini_g};
+ 635   static const int total_inis = sizeof(inis)/sizeof(VectorRegister);
+ 636 
+ 637   Label state_save_aligned, after_state_save_aligned;
+ 638 
+ 639   Register addr      = R7;
+ 640   Register tmp       = R8;
+ 641   VectorRegister vRb = VR8;
+ 642   VectorRegister aux = VR9;
+ 643 
+ 644   andi_(tmp, state, 0xf);
+ 645   beq(CCR0, state_save_aligned);
+ 646   // deal with unaligned addresses
+ 647 
+ 648   {
+ 649     VectorRegister a = hs[0];
+ 650     VectorRegister b_ = hs[1];
+ 651     VectorRegister c = hs[2];
+ 652     VectorRegister d = hs[3];
+ 653     VectorRegister e = hs[4];
+ 654     VectorRegister f = hs[5];
+ 655     VectorRegister g = hs[6];
+ 656     VectorRegister h = hs[7];
+ 657     lvsr   (vRb, state);
+ 658     lvx    (ini_a, state);
+ 659     addi   (addr, state, 16);
+ 660 
+ 661     lvx    (ini_c, addr);
+ 662     addi   (addr, addr, 16);
+ 663     vec_perm(ini_a, ini_c, vRb);
+ 664 
+ 665     lvx    (ini_e, addr);
+ 666     addi   (addr, addr, 16);
+ 667     vec_perm(ini_c, ini_e, vRb);
+ 668 
+ 669     lvx    (ini_g, addr);
+ 670     addi   (addr, addr, 16);
+ 671     vec_perm(ini_e, ini_g, vRb);
+ 672 
+ 673     lvx    (aux, addr);
+ 674     vec_perm(ini_g, aux, vRb);
+ 675 
+ 676 #if defined(VM_LITTLE_ENDIAN)
+ 677     xxmrgld(a-&gt;to_vsr(), b_-&gt;to_vsr(), a-&gt;to_vsr());
+ 678     xxmrgld(c-&gt;to_vsr(), d-&gt;to_vsr(), c-&gt;to_vsr());
+ 679     xxmrgld(e-&gt;to_vsr(), f-&gt;to_vsr(), e-&gt;to_vsr());
+ 680     xxmrgld(g-&gt;to_vsr(), h-&gt;to_vsr(), g-&gt;to_vsr());
+ 681 #else
+ 682     xxmrgld(b_-&gt;to_vsr(), a-&gt;to_vsr(), b_-&gt;to_vsr());
+ 683     xxmrgld(d-&gt;to_vsr(), c-&gt;to_vsr(), d-&gt;to_vsr());
+ 684     xxmrgld(f-&gt;to_vsr(), e-&gt;to_vsr(), f-&gt;to_vsr());
+ 685     xxmrgld(h-&gt;to_vsr(), g-&gt;to_vsr(), h-&gt;to_vsr());
+ 686 #endif
+ 687 
+ 688     for (int n = start_idx; n &lt; total_hs; n += 2) {
+ 689       VectorRegister h_cur = hs[n];
+ 690       VectorRegister ini_cur = inis[n/2];
+ 691 
+ 692       vaddudm(h_cur, ini_cur, h_cur);
+ 693     }
+ 694 
+ 695     for (int n = start_idx; n &lt; total_hs; n += 2) {
+ 696       VectorRegister h_cur = hs[n];
+ 697 
+ 698       mfvrd  (tmp, h_cur);
+ 699 #if defined(VM_LITTLE_ENDIAN)
+ 700       std    (tmp, 8*n + 8, state);
+ 701 #else
+ 702       std    (tmp, 8*n - 8, state);
+ 703 #endif
+ 704       vsldoi (aux, h_cur, h_cur, 8);
+ 705       mfvrd  (tmp, aux);
+ 706       std    (tmp, 8*n + 0, state);
+ 707     }
+ 708 
+ 709     b      (after_state_save_aligned);
+ 710   }
+ 711 
+ 712   bind(state_save_aligned);
+ 713   {
+ 714     mr(addr, state);
+ 715     for (int n = 0; n &lt; total_hs; n += 2) {
+ 716 #if defined(VM_LITTLE_ENDIAN)
+ 717       VectorRegister h_cur = hs[n];
+ 718       VectorRegister h_next = hs[n+1];
+ 719 #else
+ 720       VectorRegister h_cur = hs[n+1];
+ 721       VectorRegister h_next = hs[n];
+ 722 #endif
+ 723       VectorRegister ini_cur = inis[n/2];
+ 724 
+ 725       lvx(ini_cur, addr);
+ 726       addi(addr, addr, 16);
+ 727       xxmrgld(h_cur-&gt;to_vsr(), h_next-&gt;to_vsr(), h_cur-&gt;to_vsr());
+ 728     }
+ 729 
+ 730     for (int n = start_idx; n &lt; total_hs; n += 2) {
+ 731       VectorRegister h_cur = hs[n];
+ 732       VectorRegister ini_cur = inis[n/2];
+ 733 
+ 734       vaddudm(h_cur, ini_cur, h_cur);
+ 735     }
+ 736 
+ 737     mr(addr, state);
+ 738     for (int n = start_idx; n &lt; total_hs; n += 2) {
+ 739       VectorRegister h_cur = hs[n];
+ 740 
+ 741       stvx(h_cur, addr);
+ 742       addi(addr, addr, 16);
+ 743     }
+ 744   }
+ 745 
+ 746   bind(after_state_save_aligned);
+ 747 }
+ 748 
+ 749 // Use h_cnt to cycle through hs elements but also increment it at the end
+ 750 void MacroAssembler::sha512_round(const VectorRegister* hs,
+ 751                                   const int total_hs, int&amp; h_cnt,
+ 752                                   const VectorRegister kpw) {
+ 753 
+ 754   // convenience registers: cycle from 0-7 downwards
+ 755   const VectorRegister a = hs[(total_hs + 0 - (h_cnt % total_hs)) % total_hs];
+ 756   const VectorRegister b = hs[(total_hs + 1 - (h_cnt % total_hs)) % total_hs];
+ 757   const VectorRegister c = hs[(total_hs + 2 - (h_cnt % total_hs)) % total_hs];
+ 758   const VectorRegister d = hs[(total_hs + 3 - (h_cnt % total_hs)) % total_hs];
+ 759   const VectorRegister e = hs[(total_hs + 4 - (h_cnt % total_hs)) % total_hs];
+ 760   const VectorRegister f = hs[(total_hs + 5 - (h_cnt % total_hs)) % total_hs];
+ 761   const VectorRegister g = hs[(total_hs + 6 - (h_cnt % total_hs)) % total_hs];
+ 762   const VectorRegister h = hs[(total_hs + 7 - (h_cnt % total_hs)) % total_hs];
+ 763   // temporaries
+ 764   const VectorRegister Ch   = VR20;
+ 765   const VectorRegister Maj  = VR21;
+ 766   const VectorRegister bsa  = VR22;
+ 767   const VectorRegister bse  = VR23;
+ 768   const VectorRegister tmp1 = VR24;
+ 769   const VectorRegister tmp2 = VR25;
+ 770 
+ 771   vsel      (Ch,   g,    f,   e);
+ 772   vxor      (Maj,  a,    b);
+ 773   vshasigmad(bse,  e,    1,   0xf);
+ 774   vaddudm   (tmp2, Ch,   kpw);
+ 775   vaddudm   (tmp1, h,    bse);
+ 776   vsel      (Maj,  b,    c,   Maj);
+ 777   vaddudm   (tmp1, tmp1, tmp2);
+ 778   vshasigmad(bsa,  a,    1,   0);
+ 779   vaddudm   (tmp2, bsa,  Maj);
+ 780   vaddudm   (d,    d,    tmp1);
+ 781   vaddudm   (h,    tmp1, tmp2);
+ 782 
+ 783   // advance vector pointer to the next iteration
+ 784   h_cnt++;
+ 785 }
+ 786 
+ 787 void MacroAssembler::sha512_calc_2w(const VectorRegister w0,
+ 788                                     const VectorRegister w1,
+ 789                                     const VectorRegister w2,
+ 790                                     const VectorRegister w3,
+ 791                                     const VectorRegister w4,
+ 792                                     const VectorRegister w5,
+ 793                                     const VectorRegister w6,
+ 794                                     const VectorRegister w7,
+ 795                                     const VectorRegister kpw0,
+ 796                                     const VectorRegister kpw1,
+ 797                                     const Register j,
+ 798                                     const VectorRegister vRb,
+ 799                                     const Register k) {
+ 800   // Temporaries
+ 801   const VectorRegister VR_a = VR20;
+ 802   const VectorRegister VR_b = VR21;
+ 803   const VectorRegister VR_c = VR22;
+ 804   const VectorRegister VR_d = VR23;
+ 805 
+ 806   // load to k[j]
+ 807   lvx        (VR_a, j,    k);
+ 808   // advance j
+ 809   addi       (j,    j,    16); // 16 bytes were read
+ 810 
+ 811 #if defined(VM_LITTLE_ENDIAN)
+ 812   // v6 = w[j-15], w[j-14]
+ 813   vperm      (VR_b, w1,   w0,  vRb);
+ 814   // v12 = w[j-7], w[j-6]
+ 815   vperm      (VR_c, w5,   w4,  vRb);
+ 816 #else
+ 817   // v6 = w[j-15], w[j-14]
+ 818   vperm      (VR_b, w0,   w1,  vRb);
+ 819   // v12 = w[j-7], w[j-6]
+ 820   vperm      (VR_c, w4,   w5,  vRb);
+ 821 #endif
+ 822 
+ 823   // v6 = s0(w[j-15]) , s0(w[j-14])
+ 824   vshasigmad (VR_b, VR_b,    0,   0);
+ 825   // v5 = s1(w[j-2]) , s1(w[j-1])
+ 826   vshasigmad (VR_d, w7,      0,   0xf);
+ 827   // v6 = s0(w[j-15]) + w[j-7] , s0(w[j-14]) + w[j-6]
+ 828   vaddudm    (VR_b, VR_b, VR_c);
+ 829   // v8 = s1(w[j-2]) + w[j-16] , s1(w[j-1]) + w[j-15]
+ 830   vaddudm    (VR_d, VR_d, w0);
+ 831   // v9 = s0(w[j-15]) + w[j-7] + w[j-16] + s1(w[j-2]), // w[j]
+ 832   //      s0(w[j-14]) + w[j-6] + w[j-15] + s1(w[j-1]), // w[j+1]
+ 833   vaddudm    (VR_c, VR_d, VR_b);
+ 834   // Updating w0 to w7 to hold the new previous 16 values from w.
+ 835   vmr        (w0,   w1);
+ 836   vmr        (w1,   w2);
+ 837   vmr        (w2,   w3);
+ 838   vmr        (w3,   w4);
+ 839   vmr        (w4,   w5);
+ 840   vmr        (w5,   w6);
+ 841   vmr        (w6,   w7);
+ 842   vmr        (w7,   VR_c);
+ 843 
+ 844 #if defined(VM_LITTLE_ENDIAN)
+ 845   // store k + w to kpw0 (2 values at once)
+ 846   vaddudm    (kpw0, VR_c, VR_a);
+ 847   // kpw1 holds (k + w)[1]
+ 848   vsldoi     (kpw1, kpw0, kpw0, 8);
+ 849 #else
+ 850   // store k + w to kpw0 (2 values at once)
+ 851   vaddudm    (kpw1, VR_c, VR_a);
+ 852   // kpw1 holds (k + w)[1]
+ 853   vsldoi     (kpw0, kpw1, kpw1, 8);
+ 854 #endif
+ 855 }
+ 856 
+ 857 void MacroAssembler::sha512_load_h_vec(const Register state,
+ 858                                        const VectorRegister* hs,
+ 859                                        const int total_hs) {
+ 860 #if defined(VM_LITTLE_ENDIAN)
+ 861   VectorRegister a   = hs[0];
+ 862   VectorRegister g   = hs[6];
+ 863   int start_idx = 0;
+ 864 #else
+ 865   VectorRegister a   = hs[1];
+ 866   VectorRegister g   = hs[7];
+ 867   int start_idx = 1;
+ 868 #endif
+ 869 
+ 870   Register addr      = R7;
+ 871   VectorRegister vRb = VR8;
+ 872   Register tmp       = R8;
+ 873   Label state_aligned, after_state_aligned;
+ 874 
+ 875   andi_(tmp, state, 0xf);
+ 876   beq(CCR0, state_aligned);
+ 877 
+ 878   // deal with unaligned addresses
+ 879   VectorRegister aux = VR9;
+ 880 
+ 881   lvx    (a,    state);
+ 882   addi   (addr, state, 16);
+ 883   lvsr   (vRb,  addr);
+ 884 
+ 885   for (int n = start_idx + 2; n &lt; total_hs; n += 2) {
+ 886     VectorRegister h_cur   = hs[n];
+ 887     VectorRegister h_prev2 = hs[n - 2];
+ 888 
+ 889     lvx    (h_cur,   addr);
+ 890     addi   (addr,    addr,  16);
+ 891     vec_perm(h_prev2, h_cur, vRb);
+ 892   }
+ 893   lvx    (aux, addr);
+ 894   vec_perm(g, aux, vRb);
+ 895 
+ 896   b      (after_state_aligned);
+ 897 
+ 898   bind(state_aligned);
+ 899 
+ 900   // deal with aligned addresses
+ 901   mr(addr, state);
+ 902   for (int n = start_idx; n &lt; total_hs; n += 2) {
+ 903     VectorRegister h_cur = hs[n];
+ 904 
+ 905     lvx    (h_cur, addr);
+ 906     addi   (addr, addr, 16);
+ 907   }
+ 908 
+ 909   bind(after_state_aligned);
+ 910 }
+ 911 
+ 912 //   R3_ARG1   - byte[]  Input string with padding but in Big Endian
+ 913 //   R4_ARG2   - int[]   SHA.state (at first, the root of primes)
+ 914 //   R5_ARG3   - int     offset
+ 915 //   R6_ARG4   - int     limit
+ 916 //
+ 917 //   Internal Register usage:
+ 918 //   R7 R8 R9  - volatile temporaries
+ 919 //   VR0-VR7   - a-h
+ 920 //   VR8       - vRb
+ 921 //   VR9       - aux (highly volatile, use with care)
+ 922 //   VR10-VR17 - w0-w7 | ini_a-ini_h
+ 923 //   VR18      - vsp16 | kplusw0
+ 924 //   VR19      - vsp32 | kplusw1
+ 925 //   VR20-VR25 - sha512_calc_2w and sha512_round temporaries
+ 926 void MacroAssembler::sha512(bool multi_block) {
+ 927   static const ssize_t base_size = sizeof(uint64_t);
+ 928   static const ssize_t buf_size = 128;
+ 929   static uint64_t waux[buf_size / base_size] __attribute((aligned (16)));
+ 930   static const uint64_t round_consts[80] __attribute((aligned (16))) = {
+ 931     0x428a2f98d728ae22, 0x7137449123ef65cd,
+ 932     0xb5c0fbcfec4d3b2f, 0xe9b5dba58189dbbc,
+ 933     0x3956c25bf348b538, 0x59f111f1b605d019,
+ 934     0x923f82a4af194f9b, 0xab1c5ed5da6d8118,
+ 935     0xd807aa98a3030242, 0x12835b0145706fbe,
+ 936     0x243185be4ee4b28c, 0x550c7dc3d5ffb4e2,
+ 937     0x72be5d74f27b896f, 0x80deb1fe3b1696b1,
+ 938     0x9bdc06a725c71235, 0xc19bf174cf692694,
+ 939     0xe49b69c19ef14ad2, 0xefbe4786384f25e3,
+ 940     0x0fc19dc68b8cd5b5, 0x240ca1cc77ac9c65,
+ 941     0x2de92c6f592b0275, 0x4a7484aa6ea6e483,
+ 942     0x5cb0a9dcbd41fbd4, 0x76f988da831153b5,
+ 943     0x983e5152ee66dfab, 0xa831c66d2db43210,
+ 944     0xb00327c898fb213f, 0xbf597fc7beef0ee4,
+ 945     0xc6e00bf33da88fc2, 0xd5a79147930aa725,
+ 946     0x06ca6351e003826f, 0x142929670a0e6e70,
+ 947     0x27b70a8546d22ffc, 0x2e1b21385c26c926,
+ 948     0x4d2c6dfc5ac42aed, 0x53380d139d95b3df,
+ 949     0x650a73548baf63de, 0x766a0abb3c77b2a8,
+ 950     0x81c2c92e47edaee6, 0x92722c851482353b,
+ 951     0xa2bfe8a14cf10364, 0xa81a664bbc423001,
+ 952     0xc24b8b70d0f89791, 0xc76c51a30654be30,
+ 953     0xd192e819d6ef5218, 0xd69906245565a910,
+ 954     0xf40e35855771202a, 0x106aa07032bbd1b8,
+ 955     0x19a4c116b8d2d0c8, 0x1e376c085141ab53,
+ 956     0x2748774cdf8eeb99, 0x34b0bcb5e19b48a8,
+ 957     0x391c0cb3c5c95a63, 0x4ed8aa4ae3418acb,
+ 958     0x5b9cca4f7763e373, 0x682e6ff3d6b2b8a3,
+ 959     0x748f82ee5defb2fc, 0x78a5636f43172f60,
+ 960     0x84c87814a1f0ab72, 0x8cc702081a6439ec,
+ 961     0x90befffa23631e28, 0xa4506cebde82bde9,
+ 962     0xbef9a3f7b2c67915, 0xc67178f2e372532b,
+ 963     0xca273eceea26619c, 0xd186b8c721c0c207,
+ 964     0xeada7dd6cde0eb1e, 0xf57d4f7fee6ed178,
+ 965     0x06f067aa72176fba, 0x0a637dc5a2c898a6,
+ 966     0x113f9804bef90dae, 0x1b710b35131c471b,
+ 967     0x28db77f523047d84, 0x32caab7b40c72493,
+ 968     0x3c9ebe0a15c9bebc, 0x431d67c49c100d4c,
+ 969     0x4cc5d4becb3e42b6, 0x597f299cfc657e2a,
+ 970     0x5fcb6fab3ad6faec, 0x6c44198c4a475817,
+ 971   };
+ 972   static const uint8_t w_size = sizeof(round_consts)/sizeof(uint64_t);
+ 973 
+ 974   Register buf_in = R3_ARG1;
+ 975   Register state  = R4_ARG2;
+ 976   Register ofs    = R5_ARG3;
+ 977   Register limit  = R6_ARG4;
+ 978 
+ 979   Label sha_loop, bsw_loop, core_loop;
+ 980 
+ 981   // Save non-volatile vector registers in the red zone
+ 982   static const VectorRegister nv[] = {
+ 983     VR20, VR21, VR22, VR23, VR24, VR25/*, VR26, VR27, VR28, VR29, VR30, VR31*/
+ 984   };
+ 985   static const uint8_t nv_size = sizeof(nv) / sizeof (VectorRegister);
+ 986 
+ 987   for (int c = 0; c &lt; nv_size; c++) {
+ 988     Register idx = R7;
+ 989     li  (idx, (c - (nv_size)) * 16);
+ 990     stvx(nv[c], idx, R1);
+ 991   }
+ 992 
+ 993   // Load hash state to registers
+ 994   VectorRegister a = VR0;
+ 995   VectorRegister b = VR1;
+ 996   VectorRegister c = VR2;
+ 997   VectorRegister d = VR3;
+ 998   VectorRegister e = VR4;
+ 999   VectorRegister f = VR5;
+1000   VectorRegister g = VR6;
+1001   VectorRegister h = VR7;
+1002   static const VectorRegister hs[] = {a, b, c, d, e, f, g, h};
+1003   static const int total_hs = sizeof(hs)/sizeof(VectorRegister);
+1004   // counter for cycling through hs vector to avoid register moves between iterations
+1005   int h_cnt = 0;
+1006 
+1007   // Load a-h registers from the memory pointed by state
+1008   sha512_load_h_vec(state, hs, total_hs);
+1009 
+1010   if (multi_block) {
+1011     align(OptoLoopAlignment);
+1012   }
+1013   bind(sha_loop);
+1014 
+1015   for (int n = 0; n &lt; total_hs; n += 2) {
+1016 #if defined(VM_LITTLE_ENDIAN)
+1017     VectorRegister h_cur = hs[n];
+1018     VectorRegister h_next = hs[n + 1];
+1019 #else
+1020     VectorRegister h_cur = hs[n + 1];
+1021     VectorRegister h_next = hs[n];
+1022 #endif
+1023     vsldoi (h_next, h_cur, h_cur, 8);
+1024   }
+1025 
+1026   Register k = R9;
+1027   load_const_optimized(k, const_cast&lt;uint64_t *&gt;(round_consts), R0);
+1028 
+1029   // Load 16 elements from w out of the loop.
+1030   // Order of the long values is Endianess specific.
+1031   VectorRegister w0 = VR10;
+1032   VectorRegister w1 = VR11;
+1033   VectorRegister w2 = VR12;
+1034   VectorRegister w3 = VR13;
+1035   VectorRegister w4 = VR14;
+1036   VectorRegister w5 = VR15;
+1037   VectorRegister w6 = VR16;
+1038   VectorRegister w7 = VR17;
+1039   static const VectorRegister ws[] = {w0, w1, w2, w3, w4, w5, w6, w7};
+1040   static const int total_ws = sizeof(ws)/sizeof(VectorRegister);
+1041 
+1042   // Load 16 w into vectors and setup vsl for vperm
+1043   sha512_load_w_vec(buf_in, ws, total_ws);
+1044 
+1045 #if defined(VM_LITTLE_ENDIAN)
+1046   VectorRegister vsp16 = VR18;
+1047   VectorRegister vsp32 = VR19;
+1048   VectorRegister shiftarg = VR9;
+1049 
+1050   vspltisw(vsp16,    8);
+1051   vspltisw(shiftarg, 1);
+1052   vsl     (vsp16,    vsp16, shiftarg);
+1053   vsl     (vsp32,    vsp16, shiftarg);
+1054 
+1055   VectorRegister vsp8 = VR9;
+1056   vspltish(vsp8,     8);
+1057 
+1058   // Convert input from Big Endian to Little Endian
+1059   for (int c = 0; c &lt; total_ws; c++) {
+1060     VectorRegister w = ws[c];
+1061     vrlh  (w, w, vsp8);
+1062   }
+1063   for (int c = 0; c &lt; total_ws; c++) {
+1064     VectorRegister w = ws[c];
+1065     vrlw  (w, w, vsp16);
+1066   }
+1067   for (int c = 0; c &lt; total_ws; c++) {
+1068     VectorRegister w = ws[c];
+1069     vrld  (w, w, vsp32);
+1070   }
+1071 #endif
+1072 
+1073   Register Rb        = R10;
+1074   VectorRegister vRb = VR8;
+1075   li      (Rb, 8);
+1076   lvsr    (vRb, Rb);
+1077 
+1078   VectorRegister kplusw0 = VR18;
+1079   VectorRegister kplusw1 = VR19;
+1080 
+1081   Register addr      = R7;
+1082   mr      (addr, k);
+1083 
+1084   for (int n = 0; n &lt; total_ws; n++) {
+1085     VectorRegister w = ws[n];
+1086 
+1087     lvx    (kplusw0, addr);
+1088     addi   (addr, addr, 16);
+1089 #if defined(VM_LITTLE_ENDIAN)
+1090     vaddudm(kplusw0, kplusw0, w);
+1091     vsldoi (kplusw1, kplusw0, kplusw0, 8);
+1092 #else
+1093     vaddudm(kplusw1, kplusw0, w);
+1094     vsldoi (kplusw0, kplusw1, kplusw1, 8);
+1095 #endif
+1096 
+1097     sha512_round(hs, total_hs, h_cnt, kplusw0);
+1098     sha512_round(hs, total_hs, h_cnt, kplusw1);
+1099   }
+1100 
+1101   Register tmp       = R8;
+1102   li    (tmp, (w_size-16)/total_hs);
+1103   mtctr (tmp);
+1104   // j will be aligned to 4 for loading words.
+1105   // Whenever read, advance the pointer (e.g: when j is used in a function)
+1106   Register j = tmp;
+1107   li     (j, 8*16);
+1108 
+1109   align(OptoLoopAlignment);
+1110   bind(core_loop);
+1111 
+1112   // due to VectorRegister rotate, always iterate in multiples of total_hs
+1113   for (int n = 0; n &lt; total_hs/2; n++) {
+1114     sha512_calc_2w(w0, w1, w2, w3, w4, w5, w6, w7, kplusw0, kplusw1, j, vRb, k);
+1115     sha512_round(hs, total_hs, h_cnt, kplusw0);
+1116     sha512_round(hs, total_hs, h_cnt, kplusw1);
+1117   }
+1118 
+1119   bdnz   (core_loop);
+1120 
+1121   sha512_update_sha_state(state, hs, total_hs);
+1122 
+1123   if (multi_block) {
+1124     // process next 1024 bit block (buf_in already updated)
+1125     addi(ofs, ofs, buf_size);
+1126     cmpd(CCR0, ofs, limit);
+1127     blt(CCR0, sha_loop);
+1128 
+1129     // return ofs
+1130     mr(R3_ARG1, ofs);
+1131   }
+1132 
+1133   // Restore non-volatile registers
+1134   for (int c = 0; c &lt; nv_size; c++) {
+1135     Register idx = R7;
+1136     li  (idx, (c - (nv_size)) * 16);
+1137     lvx(nv[c], idx, R1);
+1138   }
+1139 }
+</pre></body></html>
