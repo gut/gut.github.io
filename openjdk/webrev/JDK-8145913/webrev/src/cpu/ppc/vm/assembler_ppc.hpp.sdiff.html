@@ -1,0 +1,185 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk8-hotspot-hg Sdiff src/cpu/ppc/vm </title>
+</head><body id="SUNWwebrev">
+<center>&lt prev <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/assembler_ppc.inline.hpp.sdiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/assembler_ppc.hpp</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre>rev 8345 : Backport of "<a href="https://bugs.openjdk.java.net/browse/JDK-8145913">8145913</a>: PPC64: add Montgomery multiply intrinsic"</pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+1163   inline void subf(   Register d, Register a, Register b);  // d = b - a    "Sub_from", as in ppc spec.
+1164   inline void sub(    Register d, Register a, Register b);  // d = a - b    Swap operands of subf for readability.
+1165   inline void subf_(  Register d, Register a, Register b);
+1166   inline void addc(   Register d, Register a, Register b);
+1167   inline void addc_(  Register d, Register a, Register b);
+1168   inline void subfc(  Register d, Register a, Register b);
+1169   inline void subfc_( Register d, Register a, Register b);
+1170   inline void adde(   Register d, Register a, Register b);
+1171   inline void adde_(  Register d, Register a, Register b);
+1172   inline void subfe(  Register d, Register a, Register b);
+1173   inline void subfe_( Register d, Register a, Register b);
+1174   inline void neg(    Register d, Register a);
+1175   inline void neg_(   Register d, Register a);
+1176   inline void mulli(  Register d, Register a, int si16);
+1177   inline void mulld(  Register d, Register a, Register b);
+1178   inline void mulld_( Register d, Register a, Register b);
+1179   inline void mullw(  Register d, Register a, Register b);
+1180   inline void mullw_( Register d, Register a, Register b);
+1181   inline void mulhw(  Register d, Register a, Register b);
+1182   inline void mulhw_( Register d, Register a, Register b);
+
+
+1183   inline void mulhd(  Register d, Register a, Register b);
+1184   inline void mulhd_( Register d, Register a, Register b);
+1185   inline void mulhdu( Register d, Register a, Register b);
+1186   inline void mulhdu_(Register d, Register a, Register b);
+1187   inline void divd(   Register d, Register a, Register b);
+1188   inline void divd_(  Register d, Register a, Register b);
+1189   inline void divw(   Register d, Register a, Register b);
+1190   inline void divw_(  Register d, Register a, Register b);
+1191 
+1192   // extended mnemonics
+1193   inline void li(   Register d, int si16);
+1194   inline void lis(  Register d, int si16);
+1195   inline void addir(Register d, int si16, Register a);
+1196 
+1197   static bool is_addi(int x) {
+1198      return ADDI_OPCODE == (x &amp; ADDI_OPCODE_MASK);
+1199   }
+1200   static bool is_addis(int x) {
+1201      return ADDIS_OPCODE == (x &amp; ADDIS_OPCODE_MASK);
+1202   }
+
+</pre><hr></hr>
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+1163   inline void subf(   Register d, Register a, Register b);  // d = b - a    "Sub_from", as in ppc spec.
+1164   inline void sub(    Register d, Register a, Register b);  // d = a - b    Swap operands of subf for readability.
+1165   inline void subf_(  Register d, Register a, Register b);
+1166   inline void addc(   Register d, Register a, Register b);
+1167   inline void addc_(  Register d, Register a, Register b);
+1168   inline void subfc(  Register d, Register a, Register b);
+1169   inline void subfc_( Register d, Register a, Register b);
+1170   inline void adde(   Register d, Register a, Register b);
+1171   inline void adde_(  Register d, Register a, Register b);
+1172   inline void subfe(  Register d, Register a, Register b);
+1173   inline void subfe_( Register d, Register a, Register b);
+1174   inline void neg(    Register d, Register a);
+1175   inline void neg_(   Register d, Register a);
+1176   inline void mulli(  Register d, Register a, int si16);
+1177   inline void mulld(  Register d, Register a, Register b);
+1178   inline void mulld_( Register d, Register a, Register b);
+1179   inline void mullw(  Register d, Register a, Register b);
+1180   inline void mullw_( Register d, Register a, Register b);
+1181   inline void mulhw(  Register d, Register a, Register b);
+1182   inline void mulhw_( Register d, Register a, Register b);
+<span class="new">1183   inline void mulhwu( Register d, Register a, Register b);</span>
+<span class="new">1184   inline void mulhwu_(Register d, Register a, Register b);</span>
+1185   inline void mulhd(  Register d, Register a, Register b);
+1186   inline void mulhd_( Register d, Register a, Register b);
+1187   inline void mulhdu( Register d, Register a, Register b);
+1188   inline void mulhdu_(Register d, Register a, Register b);
+1189   inline void divd(   Register d, Register a, Register b);
+1190   inline void divd_(  Register d, Register a, Register b);
+1191   inline void divw(   Register d, Register a, Register b);
+1192   inline void divw_(  Register d, Register a, Register b);
+1193 
+1194   // extended mnemonics
+1195   inline void li(   Register d, int si16);
+1196   inline void lis(  Register d, int si16);
+1197   inline void addir(Register d, int si16, Register a);
+1198 
+1199   static bool is_addi(int x) {
+1200      return ADDI_OPCODE == (x &amp; ADDI_OPCODE_MASK);
+1201   }
+1202   static bool is_addis(int x) {
+1203      return ADDIS_OPCODE == (x &amp; ADDIS_OPCODE_MASK);
+1204   }
+
+</pre><hr></hr>
+</pre></td>
+</tr></table>
+<center>&lt prev <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/assembler_ppc.inline.hpp.sdiff.html' target='_top'>next &gt</a></center>
+</body></html>

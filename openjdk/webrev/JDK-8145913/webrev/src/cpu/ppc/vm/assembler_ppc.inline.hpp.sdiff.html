@@ -1,0 +1,185 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk8-hotspot-hg Sdiff src/cpu/ppc/vm </title>
+</head><body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/assembler_ppc.hpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/c2_init_ppc.cpp.sdiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/assembler_ppc.inline.hpp</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre>rev 8345 : Backport of "<a href="https://bugs.openjdk.java.net/browse/JDK-8145913">8145913</a>: PPC64: add Montgomery multiply intrinsic"</pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+  92 inline void Assembler::subf(   Register d, Register a, Register b) { emit_int32(SUBF_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+  93 inline void Assembler::sub(    Register d, Register a, Register b) { subf(d, b, a); }
+  94 inline void Assembler::subf_(  Register d, Register a, Register b) { emit_int32(SUBF_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+  95 inline void Assembler::addc(   Register d, Register a, Register b) { emit_int32(ADDC_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+  96 inline void Assembler::addc_(  Register d, Register a, Register b) { emit_int32(ADDC_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+  97 inline void Assembler::subfc(  Register d, Register a, Register b) { emit_int32(SUBFC_OPCODE  | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+  98 inline void Assembler::subfc_( Register d, Register a, Register b) { emit_int32(SUBFC_OPCODE  | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+  99 inline void Assembler::adde(   Register d, Register a, Register b) { emit_int32(ADDE_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+ 100 inline void Assembler::adde_(  Register d, Register a, Register b) { emit_int32(ADDE_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+ 101 inline void Assembler::subfe(  Register d, Register a, Register b) { emit_int32(SUBFE_OPCODE  | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+ 102 inline void Assembler::subfe_( Register d, Register a, Register b) { emit_int32(SUBFE_OPCODE  | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+ 103 inline void Assembler::neg(    Register d, Register a)             { emit_int32(NEG_OPCODE    | rt(d) | ra(a) | oe(0) | rc(0)); }
+ 104 inline void Assembler::neg_(   Register d, Register a)             { emit_int32(NEG_OPCODE    | rt(d) | ra(a) | oe(0) | rc(1)); }
+ 105 inline void Assembler::mulli(  Register d, Register a, int si16)   { emit_int32(MULLI_OPCODE  | rt(d) | ra(a) | simm(si16, 16)); }
+ 106 inline void Assembler::mulld(  Register d, Register a, Register b) { emit_int32(MULLD_OPCODE  | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+ 107 inline void Assembler::mulld_( Register d, Register a, Register b) { emit_int32(MULLD_OPCODE  | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+ 108 inline void Assembler::mullw(  Register d, Register a, Register b) { emit_int32(MULLW_OPCODE  | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+ 109 inline void Assembler::mullw_( Register d, Register a, Register b) { emit_int32(MULLW_OPCODE  | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+ 110 inline void Assembler::mulhw(  Register d, Register a, Register b) { emit_int32(MULHW_OPCODE  | rt(d) | ra(a) | rb(b) | rc(0)); }
+ 111 inline void Assembler::mulhw_( Register d, Register a, Register b) { emit_int32(MULHW_OPCODE  | rt(d) | ra(a) | rb(b) | rc(1)); }
+
+
+ 112 inline void Assembler::mulhd(  Register d, Register a, Register b) { emit_int32(MULHD_OPCODE  | rt(d) | ra(a) | rb(b) | rc(0)); }
+ 113 inline void Assembler::mulhd_( Register d, Register a, Register b) { emit_int32(MULHD_OPCODE  | rt(d) | ra(a) | rb(b) | rc(1)); }
+ 114 inline void Assembler::mulhdu( Register d, Register a, Register b) { emit_int32(MULHDU_OPCODE | rt(d) | ra(a) | rb(b) | rc(0)); }
+ 115 inline void Assembler::mulhdu_(Register d, Register a, Register b) { emit_int32(MULHDU_OPCODE | rt(d) | ra(a) | rb(b) | rc(1)); }
+ 116 inline void Assembler::divd(   Register d, Register a, Register b) { emit_int32(DIVD_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+ 117 inline void Assembler::divd_(  Register d, Register a, Register b) { emit_int32(DIVD_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+ 118 inline void Assembler::divw(   Register d, Register a, Register b) { emit_int32(DIVW_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+ 119 inline void Assembler::divw_(  Register d, Register a, Register b) { emit_int32(DIVW_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+ 120 
+ 121 // extended mnemonics
+ 122 inline void Assembler::li(   Register d, int si16)             { Assembler::addi_r0ok( d, R0, si16); }
+ 123 inline void Assembler::lis(  Register d, int si16)             { Assembler::addis_r0ok(d, R0, si16); }
+ 124 inline void Assembler::addir(Register d, int si16, Register a) { Assembler::addi(d, a, si16); }
+ 125 
+ 126 // PPC 1, section 3.3.9, Fixed-Point Compare Instructions
+ 127 inline void Assembler::cmpi(  ConditionRegister f, int l, Register a, int si16)   { emit_int32( CMPI_OPCODE  | bf(f) | l10(l) | ra(a) | simm(si16,16)); }
+ 128 inline void Assembler::cmp(   ConditionRegister f, int l, Register a, Register b) { emit_int32( CMP_OPCODE   | bf(f) | l10(l) | ra(a) | rb(b)); }
+ 129 inline void Assembler::cmpli( ConditionRegister f, int l, Register a, int ui16)   { emit_int32( CMPLI_OPCODE | bf(f) | l10(l) | ra(a) | uimm(ui16,16)); }
+ 130 inline void Assembler::cmpl(  ConditionRegister f, int l, Register a, Register b) { emit_int32( CMPL_OPCODE  | bf(f) | l10(l) | ra(a) | rb(b)); }
+ 131 
+
+</pre><hr></hr>
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+  92 inline void Assembler::subf(   Register d, Register a, Register b) { emit_int32(SUBF_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+  93 inline void Assembler::sub(    Register d, Register a, Register b) { subf(d, b, a); }
+  94 inline void Assembler::subf_(  Register d, Register a, Register b) { emit_int32(SUBF_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+  95 inline void Assembler::addc(   Register d, Register a, Register b) { emit_int32(ADDC_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+  96 inline void Assembler::addc_(  Register d, Register a, Register b) { emit_int32(ADDC_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+  97 inline void Assembler::subfc(  Register d, Register a, Register b) { emit_int32(SUBFC_OPCODE  | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+  98 inline void Assembler::subfc_( Register d, Register a, Register b) { emit_int32(SUBFC_OPCODE  | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+  99 inline void Assembler::adde(   Register d, Register a, Register b) { emit_int32(ADDE_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+ 100 inline void Assembler::adde_(  Register d, Register a, Register b) { emit_int32(ADDE_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+ 101 inline void Assembler::subfe(  Register d, Register a, Register b) { emit_int32(SUBFE_OPCODE  | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+ 102 inline void Assembler::subfe_( Register d, Register a, Register b) { emit_int32(SUBFE_OPCODE  | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+ 103 inline void Assembler::neg(    Register d, Register a)             { emit_int32(NEG_OPCODE    | rt(d) | ra(a) | oe(0) | rc(0)); }
+ 104 inline void Assembler::neg_(   Register d, Register a)             { emit_int32(NEG_OPCODE    | rt(d) | ra(a) | oe(0) | rc(1)); }
+ 105 inline void Assembler::mulli(  Register d, Register a, int si16)   { emit_int32(MULLI_OPCODE  | rt(d) | ra(a) | simm(si16, 16)); }
+ 106 inline void Assembler::mulld(  Register d, Register a, Register b) { emit_int32(MULLD_OPCODE  | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+ 107 inline void Assembler::mulld_( Register d, Register a, Register b) { emit_int32(MULLD_OPCODE  | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+ 108 inline void Assembler::mullw(  Register d, Register a, Register b) { emit_int32(MULLW_OPCODE  | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+ 109 inline void Assembler::mullw_( Register d, Register a, Register b) { emit_int32(MULLW_OPCODE  | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+ 110 inline void Assembler::mulhw(  Register d, Register a, Register b) { emit_int32(MULHW_OPCODE  | rt(d) | ra(a) | rb(b) | rc(0)); }
+ 111 inline void Assembler::mulhw_( Register d, Register a, Register b) { emit_int32(MULHW_OPCODE  | rt(d) | ra(a) | rb(b) | rc(1)); }
+<span class="new"> 112 inline void Assembler::mulhwu( Register d, Register a, Register b) { emit_int32(MULHWU_OPCODE | rt(d) | ra(a) | rb(b) | rc(0)); }</span>
+<span class="new"> 113 inline void Assembler::mulhwu_(Register d, Register a, Register b) { emit_int32(MULHWU_OPCODE | rt(d) | ra(a) | rb(b) | rc(1)); }</span>
+ 114 inline void Assembler::mulhd(  Register d, Register a, Register b) { emit_int32(MULHD_OPCODE  | rt(d) | ra(a) | rb(b) | rc(0)); }
+ 115 inline void Assembler::mulhd_( Register d, Register a, Register b) { emit_int32(MULHD_OPCODE  | rt(d) | ra(a) | rb(b) | rc(1)); }
+ 116 inline void Assembler::mulhdu( Register d, Register a, Register b) { emit_int32(MULHDU_OPCODE | rt(d) | ra(a) | rb(b) | rc(0)); }
+ 117 inline void Assembler::mulhdu_(Register d, Register a, Register b) { emit_int32(MULHDU_OPCODE | rt(d) | ra(a) | rb(b) | rc(1)); }
+ 118 inline void Assembler::divd(   Register d, Register a, Register b) { emit_int32(DIVD_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+ 119 inline void Assembler::divd_(  Register d, Register a, Register b) { emit_int32(DIVD_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+ 120 inline void Assembler::divw(   Register d, Register a, Register b) { emit_int32(DIVW_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(0)); }
+ 121 inline void Assembler::divw_(  Register d, Register a, Register b) { emit_int32(DIVW_OPCODE   | rt(d) | ra(a) | rb(b) | oe(0) | rc(1)); }
+ 122 
+ 123 // extended mnemonics
+ 124 inline void Assembler::li(   Register d, int si16)             { Assembler::addi_r0ok( d, R0, si16); }
+ 125 inline void Assembler::lis(  Register d, int si16)             { Assembler::addis_r0ok(d, R0, si16); }
+ 126 inline void Assembler::addir(Register d, int si16, Register a) { Assembler::addi(d, a, si16); }
+ 127 
+ 128 // PPC 1, section 3.3.9, Fixed-Point Compare Instructions
+ 129 inline void Assembler::cmpi(  ConditionRegister f, int l, Register a, int si16)   { emit_int32( CMPI_OPCODE  | bf(f) | l10(l) | ra(a) | simm(si16,16)); }
+ 130 inline void Assembler::cmp(   ConditionRegister f, int l, Register a, Register b) { emit_int32( CMP_OPCODE   | bf(f) | l10(l) | ra(a) | rb(b)); }
+ 131 inline void Assembler::cmpli( ConditionRegister f, int l, Register a, int ui16)   { emit_int32( CMPLI_OPCODE | bf(f) | l10(l) | ra(a) | uimm(ui16,16)); }
+ 132 inline void Assembler::cmpl(  ConditionRegister f, int l, Register a, Register b) { emit_int32( CMPL_OPCODE  | bf(f) | l10(l) | ra(a) | rb(b)); }
+ 133 
+
+</pre><hr></hr>
+</pre></td>
+</tr></table>
+<center><a href='../../../../src/cpu/ppc/vm/assembler_ppc.hpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/c2_init_ppc.cpp.sdiff.html' target='_top'>next &gt</a></center>
+</body></html>

@@ -1,0 +1,711 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk8-hotspot-hg Sdiff src/cpu/ppc/vm </title>
+</head><body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/c2_init_ppc.cpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/stubGenerator_ppc.cpp.sdiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/sharedRuntime_ppc.cpp</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre>rev 8345 : Backport of "<a href="https://bugs.openjdk.java.net/browse/JDK-8145913">8145913</a>: PPC64: add Montgomery multiply intrinsic"</pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+  25 
+  26 #include "precompiled.hpp"
+  27 #include "asm/macroAssembler.inline.hpp"
+  28 #include "code/debugInfoRec.hpp"
+  29 #include "code/icBuffer.hpp"
+  30 #include "code/vtableStubs.hpp"
+  31 #include "interpreter/interpreter.hpp"
+  32 #include "oops/compiledICHolder.hpp"
+  33 #include "prims/jvmtiRedefineClassesTrace.hpp"
+  34 #include "runtime/sharedRuntime.hpp"
+  35 #include "runtime/vframeArray.hpp"
+  36 #include "vmreg_ppc.inline.hpp"
+  37 #include "adfiles/ad_ppc_64.hpp"
+  38 #ifdef COMPILER1
+  39 #include "c1/c1_Runtime1.hpp"
+  40 #endif
+  41 #ifdef COMPILER2
+  42 #include "opto/runtime.hpp"
+  43 #endif
+  44 
+
+
+  45 #define __ masm-&gt;
+  46 
+  47 #ifdef PRODUCT
+  48 #define BLOCK_COMMENT(str) // nothing
+  49 #else
+  50 #define BLOCK_COMMENT(str) __ block_comment(str)
+  51 #endif
+  52 
+  53 #define BIND(label) bind(label); BLOCK_COMMENT(#label ":")
+  54 
+  55 
+  56 class RegisterSaver {
+  57  // Used for saving volatile registers.
+  58  public:
+  59 
+  60   // Support different return pc locations.
+  61   enum ReturnPCLocation {
+  62     return_pc_is_lr,
+  63     return_pc_is_r4,
+  64     return_pc_is_thread_saved_exception_pc
+
+</pre><hr></hr><pre>
+3250   // Pending exception after the safepoint.
+3251   __ BIND(pending);
+3252 
+3253   RegisterSaver::restore_live_registers_and_pop_frame(masm, frame_size_in_bytes, /*restore_ctr*/ true);
+3254 
+3255   // exception pending =&gt; remove activation and forward to exception handler
+3256 
+3257   __ li(R11_scratch1, 0);
+3258   __ ld(R3_ARG1, thread_(pending_exception));
+3259   __ std(R11_scratch1, in_bytes(JavaThread::vm_result_offset()), R16_thread);
+3260   __ b64_patchable(StubRoutines::forward_exception_entry(), relocInfo::runtime_call_type);
+3261 
+3262   // -------------
+3263   // Make sure all code is generated.
+3264   masm-&gt;flush();
+3265 
+3266   // return the blob
+3267   // frame_size_words or bytes??
+3268   return RuntimeStub::new_runtime_stub(name, &amp;buffer, frame_complete, frame_size_in_bytes/wordSize,
+3269                                        oop_maps, true);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3270 }
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+  25 
+  26 #include "precompiled.hpp"
+  27 #include "asm/macroAssembler.inline.hpp"
+  28 #include "code/debugInfoRec.hpp"
+  29 #include "code/icBuffer.hpp"
+  30 #include "code/vtableStubs.hpp"
+  31 #include "interpreter/interpreter.hpp"
+  32 #include "oops/compiledICHolder.hpp"
+  33 #include "prims/jvmtiRedefineClassesTrace.hpp"
+  34 #include "runtime/sharedRuntime.hpp"
+  35 #include "runtime/vframeArray.hpp"
+  36 #include "vmreg_ppc.inline.hpp"
+  37 #include "adfiles/ad_ppc_64.hpp"
+  38 #ifdef COMPILER1
+  39 #include "c1/c1_Runtime1.hpp"
+  40 #endif
+  41 #ifdef COMPILER2
+  42 #include "opto/runtime.hpp"
+  43 #endif
+  44 
+<span class="new">  45 #include &lt;alloca.h&gt;</span>
+<span class="new">  46 </span>
+  47 #define __ masm-&gt;
+  48 
+  49 #ifdef PRODUCT
+  50 #define BLOCK_COMMENT(str) // nothing
+  51 #else
+  52 #define BLOCK_COMMENT(str) __ block_comment(str)
+  53 #endif
+  54 
+  55 #define BIND(label) bind(label); BLOCK_COMMENT(#label ":")
+  56 
+  57 
+  58 class RegisterSaver {
+  59  // Used for saving volatile registers.
+  60  public:
+  61 
+  62   // Support different return pc locations.
+  63   enum ReturnPCLocation {
+  64     return_pc_is_lr,
+  65     return_pc_is_r4,
+  66     return_pc_is_thread_saved_exception_pc
+
+</pre><hr></hr><pre>
+3252   // Pending exception after the safepoint.
+3253   __ BIND(pending);
+3254 
+3255   RegisterSaver::restore_live_registers_and_pop_frame(masm, frame_size_in_bytes, /*restore_ctr*/ true);
+3256 
+3257   // exception pending =&gt; remove activation and forward to exception handler
+3258 
+3259   __ li(R11_scratch1, 0);
+3260   __ ld(R3_ARG1, thread_(pending_exception));
+3261   __ std(R11_scratch1, in_bytes(JavaThread::vm_result_offset()), R16_thread);
+3262   __ b64_patchable(StubRoutines::forward_exception_entry(), relocInfo::runtime_call_type);
+3263 
+3264   // -------------
+3265   // Make sure all code is generated.
+3266   masm-&gt;flush();
+3267 
+3268   // return the blob
+3269   // frame_size_words or bytes??
+3270   return RuntimeStub::new_runtime_stub(name, &amp;buffer, frame_complete, frame_size_in_bytes/wordSize,
+3271                                        oop_maps, true);
+<span class="new">3272 }</span>
+<span class="new">3273 </span>
+<span class="new">3274 </span>
+<span class="new">3275 //------------------------------Montgomery multiplication------------------------</span>
+<span class="new">3276 //</span>
+<span class="new">3277 </span>
+<span class="new">3278 // Subtract 0:b from carry:a. Return carry.</span>
+<span class="new">3279 static unsigned long</span>
+<span class="new">3280 sub(unsigned long a[], unsigned long b[], unsigned long carry, long len) {</span>
+<span class="new">3281   long i = 0;</span>
+<span class="new">3282   unsigned long tmp, tmp2;</span>
+<span class="new">3283   __asm__ __volatile__ (</span>
+<span class="new">3284     "subfc  %[tmp], %[tmp], %[tmp]   \n" // pre-set CA</span>
+<span class="new">3285     "mtctr  %[len]                   \n"</span>
+<span class="new">3286     "0:                              \n"</span>
+<span class="new">3287     "ldx    %[tmp], %[i], %[a]       \n"</span>
+<span class="new">3288     "ldx    %[tmp2], %[i], %[b]      \n"</span>
+<span class="new">3289     "subfe  %[tmp], %[tmp2], %[tmp]  \n" // subtract extended</span>
+<span class="new">3290     "stdx   %[tmp], %[i], %[a]       \n"</span>
+<span class="new">3291     "addi   %[i], %[i], 8            \n"</span>
+<span class="new">3292     "bdnz   0b                       \n"</span>
+<span class="new">3293     "addme  %[tmp], %[carry]         \n" // carry + CA - 1</span>
+<span class="new">3294     : [i]"+b"(i), [tmp]"=&amp;r"(tmp), [tmp2]"=&amp;r"(tmp2)</span>
+<span class="new">3295     : [a]"r"(a), [b]"r"(b), [carry]"r"(carry), [len]"r"(len)</span>
+<span class="new">3296     : "ctr", "xer", "memory"</span>
+<span class="new">3297   );</span>
+<span class="new">3298   return tmp;</span>
+<span class="new">3299 }</span>
+<span class="new">3300 </span>
+<span class="new">3301 // Multiply (unsigned) Long A by Long B, accumulating the double-</span>
+<span class="new">3302 // length result into the accumulator formed of T0, T1, and T2.</span>
+<span class="new">3303 inline void MACC(unsigned long A, unsigned long B, unsigned long &amp;T0, unsigned long &amp;T1, unsigned long &amp;T2) {</span>
+<span class="new">3304   unsigned long hi, lo;</span>
+<span class="new">3305   __asm__ __volatile__ (</span>
+<span class="new">3306     "mulld  %[lo], %[A], %[B]    \n"</span>
+<span class="new">3307     "mulhdu %[hi], %[A], %[B]    \n"</span>
+<span class="new">3308     "addc   %[T0], %[T0], %[lo]  \n"</span>
+<span class="new">3309     "adde   %[T1], %[T1], %[hi]  \n"</span>
+<span class="new">3310     "addze  %[T2], %[T2]         \n"</span>
+<span class="new">3311     : [hi]"=&amp;r"(hi), [lo]"=&amp;r"(lo), [T0]"+r"(T0), [T1]"+r"(T1), [T2]"+r"(T2)</span>
+<span class="new">3312     : [A]"r"(A), [B]"r"(B)</span>
+<span class="new">3313     : "xer"</span>
+<span class="new">3314   );</span>
+<span class="new">3315 }</span>
+<span class="new">3316 </span>
+<span class="new">3317 // As above, but add twice the double-length result into the</span>
+<span class="new">3318 // accumulator.</span>
+<span class="new">3319 inline void MACC2(unsigned long A, unsigned long B, unsigned long &amp;T0, unsigned long &amp;T1, unsigned long &amp;T2) {</span>
+<span class="new">3320   unsigned long hi, lo;</span>
+<span class="new">3321   __asm__ __volatile__ (</span>
+<span class="new">3322     "mulld  %[lo], %[A], %[B]    \n"</span>
+<span class="new">3323     "mulhdu %[hi], %[A], %[B]    \n"</span>
+<span class="new">3324     "addc   %[T0], %[T0], %[lo]  \n"</span>
+<span class="new">3325     "adde   %[T1], %[T1], %[hi]  \n"</span>
+<span class="new">3326     "addze  %[T2], %[T2]         \n"</span>
+<span class="new">3327     "addc   %[T0], %[T0], %[lo]  \n"</span>
+<span class="new">3328     "adde   %[T1], %[T1], %[hi]  \n"</span>
+<span class="new">3329     "addze  %[T2], %[T2]         \n"</span>
+<span class="new">3330     : [hi]"=&amp;r"(hi), [lo]"=&amp;r"(lo), [T0]"+r"(T0), [T1]"+r"(T1), [T2]"+r"(T2)</span>
+<span class="new">3331     : [A]"r"(A), [B]"r"(B)</span>
+<span class="new">3332     : "xer"</span>
+<span class="new">3333   );</span>
+<span class="new">3334 }</span>
+<span class="new">3335 </span>
+<span class="new">3336 // Fast Montgomery multiplication. The derivation of the algorithm is</span>
+<span class="new">3337 // in "A Cryptographic Library for the Motorola DSP56000,</span>
+<span class="new">3338 // Dusse and Kaliski, Proc. EUROCRYPT 90, pp. 230-237".</span>
+<span class="new">3339 static void</span>
+<span class="new">3340 montgomery_multiply(unsigned long a[], unsigned long b[], unsigned long n[],</span>
+<span class="new">3341                     unsigned long m[], unsigned long inv, int len) {</span>
+<span class="new">3342   unsigned long t0 = 0, t1 = 0, t2 = 0; // Triple-precision accumulator</span>
+<span class="new">3343   int i;</span>
+<span class="new">3344 </span>
+<span class="new">3345   assert(inv * n[0] == -1UL, "broken inverse in Montgomery multiply");</span>
+<span class="new">3346 </span>
+<span class="new">3347   for (i = 0; i &lt; len; i++) {</span>
+<span class="new">3348     int j;</span>
+<span class="new">3349     for (j = 0; j &lt; i; j++) {</span>
+<span class="new">3350       MACC(a[j], b[i-j], t0, t1, t2);</span>
+<span class="new">3351       MACC(m[j], n[i-j], t0, t1, t2);</span>
+<span class="new">3352     }</span>
+<span class="new">3353     MACC(a[i], b[0], t0, t1, t2);</span>
+<span class="new">3354     m[i] = t0 * inv;</span>
+<span class="new">3355     MACC(m[i], n[0], t0, t1, t2);</span>
+<span class="new">3356 </span>
+<span class="new">3357     assert(t0 == 0, "broken Montgomery multiply");</span>
+<span class="new">3358 </span>
+<span class="new">3359     t0 = t1; t1 = t2; t2 = 0;</span>
+<span class="new">3360   }</span>
+<span class="new">3361 </span>
+<span class="new">3362   for (i = len; i &lt; 2*len; i++) {</span>
+<span class="new">3363     int j;</span>
+<span class="new">3364     for (j = i-len+1; j &lt; len; j++) {</span>
+<span class="new">3365       MACC(a[j], b[i-j], t0, t1, t2);</span>
+<span class="new">3366       MACC(m[j], n[i-j], t0, t1, t2);</span>
+<span class="new">3367     }</span>
+<span class="new">3368     m[i-len] = t0;</span>
+<span class="new">3369     t0 = t1; t1 = t2; t2 = 0;</span>
+<span class="new">3370   }</span>
+<span class="new">3371 </span>
+<span class="new">3372   while (t0) {</span>
+<span class="new">3373     t0 = sub(m, n, t0, len);</span>
+<span class="new">3374   }</span>
+<span class="new">3375 }</span>
+<span class="new">3376 </span>
+<span class="new">3377 // Fast Montgomery squaring. This uses asymptotically 25% fewer</span>
+<span class="new">3378 // multiplies so it should be up to 25% faster than Montgomery</span>
+<span class="new">3379 // multiplication. However, its loop control is more complex and it</span>
+<span class="new">3380 // may actually run slower on some machines.</span>
+<span class="new">3381 static void</span>
+<span class="new">3382 montgomery_square(unsigned long a[], unsigned long n[],</span>
+<span class="new">3383                   unsigned long m[], unsigned long inv, int len) {</span>
+<span class="new">3384   unsigned long t0 = 0, t1 = 0, t2 = 0; // Triple-precision accumulator</span>
+<span class="new">3385   int i;</span>
+<span class="new">3386 </span>
+<span class="new">3387   assert(inv * n[0] == -1UL, "broken inverse in Montgomery multiply");</span>
+<span class="new">3388 </span>
+<span class="new">3389   for (i = 0; i &lt; len; i++) {</span>
+<span class="new">3390     int j;</span>
+<span class="new">3391     int end = (i+1)/2;</span>
+<span class="new">3392     for (j = 0; j &lt; end; j++) {</span>
+<span class="new">3393       MACC2(a[j], a[i-j], t0, t1, t2);</span>
+<span class="new">3394       MACC(m[j], n[i-j], t0, t1, t2);</span>
+<span class="new">3395     }</span>
+<span class="new">3396     if ((i &amp; 1) == 0) {</span>
+<span class="new">3397       MACC(a[j], a[j], t0, t1, t2);</span>
+<span class="new">3398     }</span>
+<span class="new">3399     for (; j &lt; i; j++) {</span>
+<span class="new">3400       MACC(m[j], n[i-j], t0, t1, t2);</span>
+<span class="new">3401     }</span>
+<span class="new">3402     m[i] = t0 * inv;</span>
+<span class="new">3403     MACC(m[i], n[0], t0, t1, t2);</span>
+<span class="new">3404 </span>
+<span class="new">3405     assert(t0 == 0, "broken Montgomery square");</span>
+<span class="new">3406 </span>
+<span class="new">3407     t0 = t1; t1 = t2; t2 = 0;</span>
+<span class="new">3408   }</span>
+<span class="new">3409 </span>
+<span class="new">3410   for (i = len; i &lt; 2*len; i++) {</span>
+<span class="new">3411     int start = i-len+1;</span>
+<span class="new">3412     int end = start + (len - start)/2;</span>
+<span class="new">3413     int j;</span>
+<span class="new">3414     for (j = start; j &lt; end; j++) {</span>
+<span class="new">3415       MACC2(a[j], a[i-j], t0, t1, t2);</span>
+<span class="new">3416       MACC(m[j], n[i-j], t0, t1, t2);</span>
+<span class="new">3417     }</span>
+<span class="new">3418     if ((i &amp; 1) == 0) {</span>
+<span class="new">3419       MACC(a[j], a[j], t0, t1, t2);</span>
+<span class="new">3420     }</span>
+<span class="new">3421     for (; j &lt; len; j++) {</span>
+<span class="new">3422       MACC(m[j], n[i-j], t0, t1, t2);</span>
+<span class="new">3423     }</span>
+<span class="new">3424     m[i-len] = t0;</span>
+<span class="new">3425     t0 = t1; t1 = t2; t2 = 0;</span>
+<span class="new">3426   }</span>
+<span class="new">3427 </span>
+<span class="new">3428   while (t0) {</span>
+<span class="new">3429     t0 = sub(m, n, t0, len);</span>
+<span class="new">3430   }</span>
+<span class="new">3431 }</span>
+<span class="new">3432 </span>
+<span class="new">3433 // The threshold at which squaring is advantageous was determined</span>
+<span class="new">3434 // experimentally on an i7-3930K (Ivy Bridge) CPU @ 3.5GHz.</span>
+<span class="new">3435 // Doesn't seem to be relevant for Power8 so we use the same value.</span>
+<span class="new">3436 #define MONTGOMERY_SQUARING_THRESHOLD 64</span>
+<span class="new">3437 </span>
+<span class="new">3438 // Copy len longwords from s to d, word-swapping as we go. The</span>
+<span class="new">3439 // destination array is reversed.</span>
+<span class="new">3440 static void reverse_words(unsigned long *s, unsigned long *d, int len) {</span>
+<span class="new">3441   d += len;</span>
+<span class="new">3442   while(len-- &gt; 0) {</span>
+<span class="new">3443     d--;</span>
+<span class="new">3444     unsigned long s_val = *s;</span>
+<span class="new">3445     // Swap words in a longword on little endian machines.</span>
+<span class="new">3446 #ifdef VM_LITTLE_ENDIAN</span>
+<span class="new">3447      s_val = (s_val &lt;&lt; 32) | (s_val &gt;&gt; 32);</span>
+<span class="new">3448 #endif</span>
+<span class="new">3449     *d = s_val;</span>
+<span class="new">3450     s++;</span>
+<span class="new">3451   }</span>
+<span class="new">3452 }</span>
+<span class="new">3453 </span>
+<span class="new">3454 void SharedRuntime::montgomery_multiply(jint *a_ints, jint *b_ints, jint *n_ints,</span>
+<span class="new">3455                                         jint len, jlong inv,</span>
+<span class="new">3456                                         jint *m_ints) {</span>
+<span class="new">3457   assert(len % 2 == 0, "array length in montgomery_multiply must be even");</span>
+<span class="new">3458   int longwords = len/2;</span>
+<span class="new">3459   assert(longwords &gt; 0, "unsupported");</span>
+<span class="new">3460 </span>
+<span class="new">3461   // Make very sure we don't use so much space that the stack might</span>
+<span class="new">3462   // overflow. 512 jints corresponds to an 16384-bit integer and</span>
+<span class="new">3463   // will use here a total of 8k bytes of stack space.</span>
+<span class="new">3464   int total_allocation = longwords * sizeof (unsigned long) * 4;</span>
+<span class="new">3465   guarantee(total_allocation &lt;= 8192, "must be");</span>
+<span class="new">3466   unsigned long *scratch = (unsigned long *)alloca(total_allocation);</span>
+<span class="new">3467 </span>
+<span class="new">3468   // Local scratch arrays</span>
+<span class="new">3469   unsigned long</span>
+<span class="new">3470     *a = scratch + 0 * longwords,</span>
+<span class="new">3471     *b = scratch + 1 * longwords,</span>
+<span class="new">3472     *n = scratch + 2 * longwords,</span>
+<span class="new">3473     *m = scratch + 3 * longwords;</span>
+<span class="new">3474 </span>
+<span class="new">3475   reverse_words((unsigned long *)a_ints, a, longwords);</span>
+<span class="new">3476   reverse_words((unsigned long *)b_ints, b, longwords);</span>
+<span class="new">3477   reverse_words((unsigned long *)n_ints, n, longwords);</span>
+<span class="new">3478 </span>
+<span class="new">3479   ::montgomery_multiply(a, b, n, m, (unsigned long)inv, longwords);</span>
+<span class="new">3480 </span>
+<span class="new">3481   reverse_words(m, (unsigned long *)m_ints, longwords);</span>
+<span class="new">3482 }</span>
+<span class="new">3483 </span>
+<span class="new">3484 void SharedRuntime::montgomery_square(jint *a_ints, jint *n_ints,</span>
+<span class="new">3485                                       jint len, jlong inv,</span>
+<span class="new">3486                                       jint *m_ints) {</span>
+<span class="new">3487   assert(len % 2 == 0, "array length in montgomery_square must be even");</span>
+<span class="new">3488   int longwords = len/2;</span>
+<span class="new">3489   assert(longwords &gt; 0, "unsupported");</span>
+<span class="new">3490 </span>
+<span class="new">3491   // Make very sure we don't use so much space that the stack might</span>
+<span class="new">3492   // overflow. 512 jints corresponds to an 16384-bit integer and</span>
+<span class="new">3493   // will use here a total of 6k bytes of stack space.</span>
+<span class="new">3494   int total_allocation = longwords * sizeof (unsigned long) * 3;</span>
+<span class="new">3495   guarantee(total_allocation &lt;= 8192, "must be");</span>
+<span class="new">3496   unsigned long *scratch = (unsigned long *)alloca(total_allocation);</span>
+<span class="new">3497 </span>
+<span class="new">3498   // Local scratch arrays</span>
+<span class="new">3499   unsigned long</span>
+<span class="new">3500     *a = scratch + 0 * longwords,</span>
+<span class="new">3501     *n = scratch + 1 * longwords,</span>
+<span class="new">3502     *m = scratch + 2 * longwords;</span>
+<span class="new">3503 </span>
+<span class="new">3504   reverse_words((unsigned long *)a_ints, a, longwords);</span>
+<span class="new">3505   reverse_words((unsigned long *)n_ints, n, longwords);</span>
+<span class="new">3506 </span>
+<span class="new">3507   if (len &gt;= MONTGOMERY_SQUARING_THRESHOLD) {</span>
+<span class="new">3508     ::montgomery_square(a, n, m, (unsigned long)inv, longwords);</span>
+<span class="new">3509   } else {</span>
+<span class="new">3510     ::montgomery_multiply(a, a, n, m, (unsigned long)inv, longwords);</span>
+<span class="new">3511   }</span>
+<span class="new">3512 </span>
+<span class="new">3513   reverse_words(m, (unsigned long *)m_ints, longwords);</span>
+3514 }
+</pre></td>
+</tr></table>
+<center><a href='../../../../src/cpu/ppc/vm/c2_init_ppc.cpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/stubGenerator_ppc.cpp.sdiff.html' target='_top'>next &gt</a></center>
+</body></html>

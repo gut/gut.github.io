@@ -1,0 +1,11 @@
+--- old/src/cpu/ppc/vm/assembler_ppc.hpp	2017-09-27 11:38:55.162070650 -0300
++++ new/src/cpu/ppc/vm/assembler_ppc.hpp	2017-09-27 11:38:54.870064153 -0300
+@@ -1180,6 +1180,8 @@
+   inline void mullw_( Register d, Register a, Register b);
+   inline void mulhw(  Register d, Register a, Register b);
+   inline void mulhw_( Register d, Register a, Register b);
++  inline void mulhwu( Register d, Register a, Register b);
++  inline void mulhwu_(Register d, Register a, Register b);
+   inline void mulhd(  Register d, Register a, Register b);
+   inline void mulhd_( Register d, Register a, Register b);
+   inline void mulhdu( Register d, Register a, Register b);

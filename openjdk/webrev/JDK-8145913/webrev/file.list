@@ -1,0 +1,9 @@
+src/cpu/ppc/vm/assembler_ppc.hpp
+src/cpu/ppc/vm/assembler_ppc.inline.hpp
+src/cpu/ppc/vm/c2_init_ppc.cpp
+src/cpu/ppc/vm/sharedRuntime_ppc.cpp
+src/cpu/ppc/vm/stubGenerator_ppc.cpp
+src/cpu/ppc/vm/templateInterpreter_ppc.cpp
+src/cpu/ppc/vm/vm_version_ppc.cpp
+src/share/vm/opto/library_call.cpp
+src/share/vm/opto/runtime.cpp

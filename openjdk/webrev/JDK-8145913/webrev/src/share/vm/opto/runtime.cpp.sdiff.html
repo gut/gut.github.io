@@ -1,0 +1,271 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk8-hotspot-hg Sdiff src/share/vm/opto </title>
+</head><body id="SUNWwebrev">
+<center><a href='../../../../src/share/vm/opto/library_call.cpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> next &gt</center>
+<h2>src/share/vm/opto/runtime.cpp</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre>rev 8346 : Adaptation due to JDK8's CCallingConventionRequiresIntsAsLongs</pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+ 986   int argp = TypeFunc::Parms;
+ 987   fields[argp++] = TypePtr::NOTNULL;    // out
+ 988   fields[argp++] = TypePtr::NOTNULL;    // in
+ 989   fields[argp++] = TypeInt::INT;        // offset
+ 990   fields[argp++] = TypeInt::INT;        // len
+ 991   fields[argp++] = TypeInt::INT;        // k
+ 992   assert(argp == TypeFunc::Parms+argcnt, "correct decoding");
+ 993   const TypeTuple* domain = TypeTuple::make(TypeFunc::Parms+argcnt, fields);
+ 994 
+ 995   // returning carry (int)
+ 996   fields = TypeTuple::fields(1);
+ 997   fields[TypeFunc::Parms+0] = TypeInt::INT;
+ 998   const TypeTuple* range = TypeTuple::make(TypeFunc::Parms+1, fields);
+ 999   return TypeFunc::make(domain, range);
+1000 }
+1001 
+1002 const TypeFunc* OptoRuntime::montgomeryMultiply_Type() {
+1003   // create input type (domain)
+1004   int num_args      = 7;
+1005   int argcnt = num_args;
+
+
+
+1006   const Type** fields = TypeTuple::fields(argcnt);
+1007   int argp = TypeFunc::Parms;
+1008   fields[argp++] = TypePtr::NOTNULL;    // a
+1009   fields[argp++] = TypePtr::NOTNULL;    // b
+1010   fields[argp++] = TypePtr::NOTNULL;    // n
+
+
+
+
+1011   fields[argp++] = TypeInt::INT;        // len
+
+1012   fields[argp++] = TypeLong::LONG;      // inv
+1013   fields[argp++] = Type::HALF;
+1014   fields[argp++] = TypePtr::NOTNULL;    // result
+1015   assert(argp == TypeFunc::Parms+argcnt, "correct decoding");
+1016   const TypeTuple* domain = TypeTuple::make(TypeFunc::Parms+argcnt, fields);
+1017 
+1018   // result type needed
+1019   fields = TypeTuple::fields(1);
+1020   fields[TypeFunc::Parms+0] = TypePtr::NOTNULL;
+1021 
+1022   const TypeTuple* range = TypeTuple::make(TypeFunc::Parms, fields);
+1023   return TypeFunc::make(domain, range);
+1024 }
+1025 
+1026 const TypeFunc* OptoRuntime::montgomerySquare_Type() {
+1027   // create input type (domain)
+1028   int num_args      = 6;
+1029   int argcnt = num_args;
+
+
+
+1030   const Type** fields = TypeTuple::fields(argcnt);
+1031   int argp = TypeFunc::Parms;
+1032   fields[argp++] = TypePtr::NOTNULL;    // a
+1033   fields[argp++] = TypePtr::NOTNULL;    // n
+
+
+
+
+1034   fields[argp++] = TypeInt::INT;        // len
+
+1035   fields[argp++] = TypeLong::LONG;      // inv
+1036   fields[argp++] = Type::HALF;
+1037   fields[argp++] = TypePtr::NOTNULL;    // result
+1038   assert(argp == TypeFunc::Parms+argcnt, "correct decoding");
+1039   const TypeTuple* domain = TypeTuple::make(TypeFunc::Parms+argcnt, fields);
+1040 
+1041   // result type needed
+1042   fields = TypeTuple::fields(1);
+1043   fields[TypeFunc::Parms+0] = TypePtr::NOTNULL;
+1044 
+1045   const TypeTuple* range = TypeTuple::make(TypeFunc::Parms, fields);
+1046   return TypeFunc::make(domain, range);
+1047 }
+1048 
+1049 
+1050 //------------- Interpreter state access for on stack replacement
+1051 const TypeFunc* OptoRuntime::osr_end_Type() {
+1052   // create input type (domain)
+1053   const Type **fields = TypeTuple::fields(1);
+1054   fields[TypeFunc::Parms+0] = TypeRawPtr::BOTTOM; // OSR temp buf
+
+</pre><hr></hr>
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+ 986   int argp = TypeFunc::Parms;
+ 987   fields[argp++] = TypePtr::NOTNULL;    // out
+ 988   fields[argp++] = TypePtr::NOTNULL;    // in
+ 989   fields[argp++] = TypeInt::INT;        // offset
+ 990   fields[argp++] = TypeInt::INT;        // len
+ 991   fields[argp++] = TypeInt::INT;        // k
+ 992   assert(argp == TypeFunc::Parms+argcnt, "correct decoding");
+ 993   const TypeTuple* domain = TypeTuple::make(TypeFunc::Parms+argcnt, fields);
+ 994 
+ 995   // returning carry (int)
+ 996   fields = TypeTuple::fields(1);
+ 997   fields[TypeFunc::Parms+0] = TypeInt::INT;
+ 998   const TypeTuple* range = TypeTuple::make(TypeFunc::Parms+1, fields);
+ 999   return TypeFunc::make(domain, range);
+1000 }
+1001 
+1002 const TypeFunc* OptoRuntime::montgomeryMultiply_Type() {
+1003   // create input type (domain)
+1004   int num_args      = 7;
+1005   int argcnt = num_args;
+<span class="new">1006   if (CCallingConventionRequiresIntsAsLongs) {</span>
+<span class="new">1007     argcnt++;                           // additional placeholder</span>
+<span class="new">1008   }</span>
+1009   const Type** fields = TypeTuple::fields(argcnt);
+1010   int argp = TypeFunc::Parms;
+1011   fields[argp++] = TypePtr::NOTNULL;    // a
+1012   fields[argp++] = TypePtr::NOTNULL;    // b
+1013   fields[argp++] = TypePtr::NOTNULL;    // n
+<span class="new">1014   if (CCallingConventionRequiresIntsAsLongs) {</span>
+<span class="new">1015     fields[argp++] = TypeLong::LONG;    // len</span>
+<span class="new">1016     fields[argp++] = TypeLong::HALF;    // placeholder</span>
+<span class="new">1017   } else {</span>
+1018     fields[argp++] = TypeInt::INT;      // len
+<span class="new">1019   }</span>
+1020   fields[argp++] = TypeLong::LONG;      // inv
+1021   fields[argp++] = Type::HALF;
+1022   fields[argp++] = TypePtr::NOTNULL;    // result
+1023   assert(argp == TypeFunc::Parms+argcnt, "correct decoding");
+1024   const TypeTuple* domain = TypeTuple::make(TypeFunc::Parms+argcnt, fields);
+1025 
+1026   // result type needed
+1027   fields = TypeTuple::fields(1);
+1028   fields[TypeFunc::Parms+0] = TypePtr::NOTNULL;
+1029 
+1030   const TypeTuple* range = TypeTuple::make(TypeFunc::Parms, fields);
+1031   return TypeFunc::make(domain, range);
+1032 }
+1033 
+1034 const TypeFunc* OptoRuntime::montgomerySquare_Type() {
+1035   // create input type (domain)
+1036   int num_args      = 6;
+1037   int argcnt = num_args;
+<span class="new">1038   if (CCallingConventionRequiresIntsAsLongs) {</span>
+<span class="new">1039     argcnt++;                           // additional placeholder</span>
+<span class="new">1040   }</span>
+1041   const Type** fields = TypeTuple::fields(argcnt);
+1042   int argp = TypeFunc::Parms;
+1043   fields[argp++] = TypePtr::NOTNULL;    // a
+1044   fields[argp++] = TypePtr::NOTNULL;    // n
+<span class="new">1045   if (CCallingConventionRequiresIntsAsLongs) {</span>
+<span class="new">1046     fields[argp++] = TypeLong::LONG;    // len</span>
+<span class="new">1047     fields[argp++] = TypeLong::HALF;    // placeholder</span>
+<span class="new">1048   } else {</span>
+1049     fields[argp++] = TypeInt::INT;      // len
+<span class="new">1050   }</span>
+1051   fields[argp++] = TypeLong::LONG;      // inv
+1052   fields[argp++] = Type::HALF;
+1053   fields[argp++] = TypePtr::NOTNULL;    // result
+1054   assert(argp == TypeFunc::Parms+argcnt, "correct decoding");
+1055   const TypeTuple* domain = TypeTuple::make(TypeFunc::Parms+argcnt, fields);
+1056 
+1057   // result type needed
+1058   fields = TypeTuple::fields(1);
+1059   fields[TypeFunc::Parms+0] = TypePtr::NOTNULL;
+1060 
+1061   const TypeTuple* range = TypeTuple::make(TypeFunc::Parms, fields);
+1062   return TypeFunc::make(domain, range);
+1063 }
+1064 
+1065 
+1066 //------------- Interpreter state access for on stack replacement
+1067 const TypeFunc* OptoRuntime::osr_end_Type() {
+1068   // create input type (domain)
+1069   const Type **fields = TypeTuple::fields(1);
+1070   fields[TypeFunc::Parms+0] = TypeRawPtr::BOTTOM; // OSR temp buf
+
+</pre><hr></hr>
+</pre></td>
+</tr></table>
+<center><a href='../../../../src/share/vm/opto/library_call.cpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> next &gt</center>
+</body></html>

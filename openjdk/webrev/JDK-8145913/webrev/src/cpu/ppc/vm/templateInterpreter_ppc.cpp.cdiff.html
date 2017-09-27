@@ -1,0 +1,149 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk8-hotspot-hg Cdiff src/cpu/ppc/vm/templateInterpreter_ppc.cpp</title>
+</head>
+<body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/stubGenerator_ppc.cpp.cdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/vm_version_ppc.cpp.cdiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/templateInterpreter_ppc.cpp</h2>
+        <a class="print" href="javascript:print()">Print this page</a>
+<pre>rev 8345 : Backport of "<a href="https://bugs.openjdk.java.net/browse/JDK-8145913">8145913</a>: PPC64: add Montgomery multiply intrinsic"</pre>
+        <pre>
+<hr /><span class="oldmarker">*** 263,273 ****</span>
+        // If no method data exists, go to profile_continue.
+        __ ld(Rmdo, in_bytes(Method::method_data_offset()), R19_method);
+        __ cmpdi(CCR0, Rmdo, 0);
+        __ beq(CCR0, no_mdo);
+  
+<span class="changed">!       // Increment backedge counter in the MDO.</span>
+        const int mdo_bc_offs = in_bytes(MethodData::backedge_counter_offset()) + in_bytes(InvocationCounter::counter_offset());
+        __ lwz(Rscratch2, mdo_bc_offs, Rmdo);
+        __ addi(Rscratch2, Rscratch2, increment);
+        __ stw(Rscratch2, mdo_bc_offs, Rmdo);
+        __ load_const_optimized(Rscratch1, mask, R0);
+<span class="newmarker">--- 263,273 ----</span>
+        // If no method data exists, go to profile_continue.
+        __ ld(Rmdo, in_bytes(Method::method_data_offset()), R19_method);
+        __ cmpdi(CCR0, Rmdo, 0);
+        __ beq(CCR0, no_mdo);
+  
+<span class="changed">!       // Increment invocation counter in the MDO.</span>
+        const int mdo_bc_offs = in_bytes(MethodData::backedge_counter_offset()) + in_bytes(InvocationCounter::counter_offset());
+        __ lwz(Rscratch2, mdo_bc_offs, Rmdo);
+        __ addi(Rscratch2, Rscratch2, increment);
+        __ stw(Rscratch2, mdo_bc_offs, Rmdo);
+        __ load_const_optimized(Rscratch1, mask, R0);
+<hr /><span class="oldmarker">*** 275,290 ****</span>
+        __ bne(CCR0, done);
+        __ b(*overflow);
+      }
+  
+      // Increment counter in MethodCounters*.
+<span class="changed">!     const int mo_bc_offs = in_bytes(MethodCounters::backedge_counter_offset()) + in_bytes(InvocationCounter::counter_offset());</span>
+      __ bind(no_mdo);
+      __ get_method_counters(R19_method, R3_counters, done);
+<span class="changed">!     __ lwz(Rscratch2, mo_bc_offs, R3_counters);</span>
+      __ addi(Rscratch2, Rscratch2, increment);
+<span class="changed">!     __ stw(Rscratch2, mo_bc_offs, R3_counters);</span>
+      __ load_const_optimized(Rscratch1, mask, R0);
+      __ and_(Rscratch1, Rscratch2, Rscratch1);
+      __ beq(CCR0, *overflow);
+  
+      __ bind(done);
+<span class="newmarker">--- 275,290 ----</span>
+        __ bne(CCR0, done);
+        __ b(*overflow);
+      }
+  
+      // Increment counter in MethodCounters*.
+<span class="changed">!     const int mo_ic_offs = in_bytes(MethodCounters::invocation_counter_offset()) + in_bytes(InvocationCounter::counter_offset());</span>
+      __ bind(no_mdo);
+      __ get_method_counters(R19_method, R3_counters, done);
+<span class="changed">!     __ lwz(Rscratch2, mo_ic_offs, R3_counters);</span>
+      __ addi(Rscratch2, Rscratch2, increment);
+<span class="changed">!     __ stw(Rscratch2, mo_ic_offs, R3_counters);</span>
+      __ load_const_optimized(Rscratch1, mask, R0);
+      __ and_(Rscratch1, Rscratch2, Rscratch1);
+      __ beq(CCR0, *overflow);
+  
+      __ bind(done);
+</pre>
+<center><a href='../../../../src/cpu/ppc/vm/stubGenerator_ppc.cpp.cdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/cpu/ppc/vm/vm_version_ppc.cpp.cdiff.html' target='_top'>next &gt</a></center>
+</body></html>
+

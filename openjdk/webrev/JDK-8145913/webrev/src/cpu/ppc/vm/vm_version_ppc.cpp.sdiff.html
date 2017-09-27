@@ -1,0 +1,193 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+<title>jdk8-hotspot-hg Sdiff src/cpu/ppc/vm </title>
+</head><body id="SUNWwebrev">
+<center><a href='../../../../src/cpu/ppc/vm/templateInterpreter_ppc.cpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/share/vm/opto/library_call.cpp.sdiff.html' target='_top'>next &gt</a></center>
+<h2>src/cpu/ppc/vm/vm_version_ppc.cpp</h2>
+<a class="print" href="javascript:print()">Print this page</a>
+<pre>rev 8345 : Backport of "<a href="https://bugs.openjdk.java.net/browse/JDK-8145913">8145913</a>: PPC64: add Montgomery multiply intrinsic"</pre>
+
+<table><tr valign="top">
+<td><pre>
+
+</pre><hr></hr><pre>
+ 184     FLAG_SET_DEFAULT(UseAES, false);
+ 185   }
+ 186   if (UseAESIntrinsics) {
+ 187     if (!FLAG_IS_DEFAULT(UseAESIntrinsics))
+ 188       warning("AES intrinsics are not available on this CPU");
+ 189     FLAG_SET_DEFAULT(UseAESIntrinsics, false);
+ 190   }
+ 191 #endif
+ 192 
+ 193   if (UseSHA) {
+ 194     warning("SHA instructions are not available on this CPU");
+ 195     FLAG_SET_DEFAULT(UseSHA, false);
+ 196   }
+ 197   if (UseSHA1Intrinsics || UseSHA256Intrinsics || UseSHA512Intrinsics) {
+ 198     warning("SHA intrinsics are not available on this CPU");
+ 199     FLAG_SET_DEFAULT(UseSHA1Intrinsics, false);
+ 200     FLAG_SET_DEFAULT(UseSHA256Intrinsics, false);
+ 201     FLAG_SET_DEFAULT(UseSHA512Intrinsics, false);
+ 202   }
+ 203 
+
+
+
+
+
+
+ 204 }
+ 205 
+ 206 void VM_Version::print_features() {
+ 207   tty-&gt;print_cr("Version: %s cache_line_size = %d", cpu_features(), (int) get_cache_line_size());
+ 208 }
+ 209 
+ 210 #ifdef COMPILER2
+ 211 // Determine section size on power6: If section size is 8 instructions,
+ 212 // there should be a difference between the two testloops of ~15 %. If
+ 213 // no difference is detected the section is assumed to be 32 instructions.
+ 214 void VM_Version::determine_section_size() {
+ 215 
+ 216   int unroll = 80;
+ 217 
+ 218   const int code_size = (2* unroll * 32 + 100)*BytesPerInstWord;
+ 219 
+ 220   // Allocate space for the code.
+ 221   ResourceMark rm;
+ 222   CodeBuffer cb("detect_section_size", code_size, 0);
+ 223   MacroAssembler* a = new MacroAssembler(&amp;cb);
+
+</pre><hr></hr>
+</pre></td><td><pre>
+
+</pre><hr></hr><pre>
+ 184     FLAG_SET_DEFAULT(UseAES, false);
+ 185   }
+ 186   if (UseAESIntrinsics) {
+ 187     if (!FLAG_IS_DEFAULT(UseAESIntrinsics))
+ 188       warning("AES intrinsics are not available on this CPU");
+ 189     FLAG_SET_DEFAULT(UseAESIntrinsics, false);
+ 190   }
+ 191 #endif
+ 192 
+ 193   if (UseSHA) {
+ 194     warning("SHA instructions are not available on this CPU");
+ 195     FLAG_SET_DEFAULT(UseSHA, false);
+ 196   }
+ 197   if (UseSHA1Intrinsics || UseSHA256Intrinsics || UseSHA512Intrinsics) {
+ 198     warning("SHA intrinsics are not available on this CPU");
+ 199     FLAG_SET_DEFAULT(UseSHA1Intrinsics, false);
+ 200     FLAG_SET_DEFAULT(UseSHA256Intrinsics, false);
+ 201     FLAG_SET_DEFAULT(UseSHA512Intrinsics, false);
+ 202   }
+ 203 
+<span class="new"> 204   if (FLAG_IS_DEFAULT(UseMontgomeryMultiplyIntrinsic)) {</span>
+<span class="new"> 205     UseMontgomeryMultiplyIntrinsic = true;</span>
+<span class="new"> 206   }</span>
+<span class="new"> 207   if (FLAG_IS_DEFAULT(UseMontgomerySquareIntrinsic)) {</span>
+<span class="new"> 208     UseMontgomerySquareIntrinsic = true;</span>
+<span class="new"> 209   }</span>
+ 210 }
+ 211 
+ 212 void VM_Version::print_features() {
+ 213   tty-&gt;print_cr("Version: %s cache_line_size = %d", cpu_features(), (int) get_cache_line_size());
+ 214 }
+ 215 
+ 216 #ifdef COMPILER2
+ 217 // Determine section size on power6: If section size is 8 instructions,
+ 218 // there should be a difference between the two testloops of ~15 %. If
+ 219 // no difference is detected the section is assumed to be 32 instructions.
+ 220 void VM_Version::determine_section_size() {
+ 221 
+ 222   int unroll = 80;
+ 223 
+ 224   const int code_size = (2* unroll * 32 + 100)*BytesPerInstWord;
+ 225 
+ 226   // Allocate space for the code.
+ 227   ResourceMark rm;
+ 228   CodeBuffer cb("detect_section_size", code_size, 0);
+ 229   MacroAssembler* a = new MacroAssembler(&amp;cb);
+
+</pre><hr></hr>
+</pre></td>
+</tr></table>
+<center><a href='../../../../src/cpu/ppc/vm/templateInterpreter_ppc.cpp.sdiff.html' target='_top'>&lt prev</a> <a href='../../../../index.html' target='_top'>index</a> <a href='../../../../src/share/vm/opto/library_call.cpp.sdiff.html' target='_top'>next &gt</a></center>
+</body></html>

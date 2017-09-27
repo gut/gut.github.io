@@ -1,0 +1,2021 @@
+<?xml version="1.0"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head><meta charset="utf-8">
+<meta http-equiv="cache-control" content="no-cache" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="-1" />
+<!--
+   Note to customizers: the body of the webrev is IDed as SUNWwebrev
+   to allow easy overriding by users of webrev via the userContent.css
+   mechanism available in some browsers.
+
+   For example, to have all "removed" information be red instead of
+   brown, set a rule in your userContent.css file like:
+
+       body#SUNWwebrev span.removed { color: red ! important; }
+-->
+<style type="text/css" media="screen">
+body {
+    background-color: #eeeeee;
+}
+hr {
+    border: none 0;
+    border-top: 1px solid #aaa;
+    height: 1px;
+}
+div.summary {
+    font-size: .8em;
+    border-bottom: 1px solid #aaa;
+    padding-left: 1em;
+    padding-right: 1em;
+}
+div.summary h2 {
+    margin-bottom: 0.3em;
+}
+div.summary table th {
+    text-align: right;
+    vertical-align: top;
+    white-space: nowrap;
+}
+span.lineschanged {
+    font-size: 0.7em;
+}
+span.oldmarker {
+    color: red;
+    font-size: large;
+    font-weight: bold;
+}
+span.newmarker {
+    color: green;
+    font-size: large;
+    font-weight: bold;
+}
+span.removed {
+    color: brown;
+}
+span.changed {
+    color: blue;
+}
+span.new {
+    color: blue;
+    font-weight: bold;
+}
+a.print { font-size: x-small; }
+
+</style>
+
+<style type="text/css" media="print">
+pre { font-size: 0.8em; font-family: courier, monospace; }
+span.removed { color: #444; font-style: italic }
+span.changed { font-weight: bold; }
+span.new { font-weight: bold; }
+span.newmarker { font-size: 1.2em; font-weight: bold; }
+span.oldmarker { font-size: 1.2em; font-weight: bold; }
+a.print {display: none}
+hr { border: none 0; border-top: 1px solid #aaa; height: 1px; }
+</style>
+
+    <script type="text/javascript" src="../../../../ancnav.js"></script>
+    </head>
+    <body id="SUNWwebrev" onkeypress="keypress(event);">
+    <a name="0"></a>
+    <pre>rev 8345 : Backport of "<a href="https://bugs.openjdk.java.net/browse/JDK-8145913">8145913</a>: PPC64: add Montgomery multiply intrinsic"</pre><hr></hr>
+<pre>
+   1 /*
+   2  * Copyright (c) 2014, Oracle and/or its affiliates. All rights reserved.
+   3  * Copyright 2013, 2014 SAP AG. All rights reserved.
+   4  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+   5  *
+   6  * This code is free software; you can redistribute it and/or modify it
+   7  * under the terms of the GNU General Public License version 2 only, as
+   8  * published by the Free Software Foundation.
+   9  *
+  10  * This code is distributed in the hope that it will be useful, but WITHOUT
+  11  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  12  * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+  13  * version 2 for more details (a copy is included in the LICENSE file that
+  14  * accompanied this code).
+  15  *
+  16  * You should have received a copy of the GNU General Public License version
+  17  * 2 along with this work; if not, write to the Free Software Foundation,
+  18  * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+  19  *
+  20  * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+  21  * or visit www.oracle.com if you need additional information or have any
+  22  * questions.
+  23  *
+  24  */
+  25 
+  26 #include "precompiled.hpp"
+  27 #ifndef CC_INTERP
+  28 #include "asm/macroAssembler.inline.hpp"
+  29 #include "interpreter/bytecodeHistogram.hpp"
+  30 #include "interpreter/interpreter.hpp"
+  31 #include "interpreter/interpreterGenerator.hpp"
+  32 #include "interpreter/interpreterRuntime.hpp"
+  33 #include "interpreter/templateTable.hpp"
+  34 #include "oops/arrayOop.hpp"
+  35 #include "oops/methodData.hpp"
+  36 #include "oops/method.hpp"
+  37 #include "oops/oop.inline.hpp"
+  38 #include "prims/jvmtiExport.hpp"
+  39 #include "prims/jvmtiThreadState.hpp"
+  40 #include "runtime/arguments.hpp"
+  41 #include "runtime/deoptimization.hpp"
+  42 #include "runtime/frame.inline.hpp"
+  43 #include "runtime/sharedRuntime.hpp"
+  44 #include "runtime/stubRoutines.hpp"
+  45 #include "runtime/synchronizer.hpp"
+  46 #include "runtime/timer.hpp"
+  47 #include "runtime/vframeArray.hpp"
+  48 #include "utilities/debug.hpp"
+  49 #include "utilities/macros.hpp"
+  50 
+  51 #undef __
+  52 #define __ _masm-&gt;
+  53 
+  54 #ifdef PRODUCT
+  55 #define BLOCK_COMMENT(str) /* nothing */
+  56 #else
+  57 #define BLOCK_COMMENT(str) __ block_comment(str)
+  58 #endif
+  59 
+  60 #define BIND(label) bind(label); BLOCK_COMMENT(#label ":")
+  61 
+  62 //-----------------------------------------------------------------------------
+  63 
+  64 // Actually we should never reach here since we do stack overflow checks before pushing any frame.
+  65 address TemplateInterpreterGenerator::generate_StackOverflowError_handler() {
+  66   address entry = __ pc();
+  67   __ unimplemented("generate_StackOverflowError_handler");
+  68   return entry;
+  69 }
+  70 
+  71 address TemplateInterpreterGenerator::generate_ArrayIndexOutOfBounds_handler(const char* name) {
+  72   address entry = __ pc();
+  73   __ empty_expression_stack();
+  74   __ load_const_optimized(R4_ARG2, (address) name);
+  75   // Index is in R17_tos.
+  76   __ mr(R5_ARG3, R17_tos);
+  77   __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::throw_ArrayIndexOutOfBoundsException));
+  78   return entry;
+  79 }
+  80 
+  81 #if 0
+  82 // Call special ClassCastException constructor taking object to cast
+  83 // and target class as arguments.
+  84 address TemplateInterpreterGenerator::generate_ClassCastException_verbose_handler() {
+  85   address entry = __ pc();
+  86 
+  87   // Expression stack must be empty before entering the VM if an
+  88   // exception happened.
+  89   __ empty_expression_stack();
+  90 
+  91   // Thread will be loaded to R3_ARG1.
+  92   // Target class oop is in register R5_ARG3 by convention!
+  93   __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::throw_ClassCastException_verbose), R17_tos, R5_ARG3);
+  94   // Above call must not return here since exception pending.
+  95   DEBUG_ONLY(__ should_not_reach_here();)
+  96   return entry;
+  97 }
+  98 #endif
+  99 
+ 100 address TemplateInterpreterGenerator::generate_ClassCastException_handler() {
+ 101   address entry = __ pc();
+ 102   // Expression stack must be empty before entering the VM if an
+ 103   // exception happened.
+ 104   __ empty_expression_stack();
+ 105 
+ 106   // Load exception object.
+ 107   // Thread will be loaded to R3_ARG1.
+ 108   __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::throw_ClassCastException), R17_tos);
+ 109 #ifdef ASSERT
+ 110   // Above call must not return here since exception pending.
+ 111   __ should_not_reach_here();
+ 112 #endif
+ 113   return entry;
+ 114 }
+ 115 
+ 116 address TemplateInterpreterGenerator::generate_exception_handler_common(const char* name, const char* message, bool pass_oop) {
+ 117   address entry = __ pc();
+ 118   //__ untested("generate_exception_handler_common");
+ 119   Register Rexception = R17_tos;
+ 120 
+ 121   // Expression stack must be empty before entering the VM if an exception happened.
+ 122   __ empty_expression_stack();
+ 123 
+ 124   __ load_const_optimized(R4_ARG2, (address) name, R11_scratch1);
+ 125   if (pass_oop) {
+ 126     __ mr(R5_ARG3, Rexception);
+ 127     __ call_VM(Rexception, CAST_FROM_FN_PTR(address, InterpreterRuntime::create_klass_exception), false);
+ 128   } else {
+ 129     __ load_const_optimized(R5_ARG3, (address) message, R11_scratch1);
+ 130     __ call_VM(Rexception, CAST_FROM_FN_PTR(address, InterpreterRuntime::create_exception), false);
+ 131   }
+ 132 
+ 133   // Throw exception.
+ 134   __ mr(R3_ARG1, Rexception);
+ 135   __ load_const_optimized(R11_scratch1, Interpreter::throw_exception_entry(), R12_scratch2);
+ 136   __ mtctr(R11_scratch1);
+ 137   __ bctr();
+ 138 
+ 139   return entry;
+ 140 }
+ 141 
+ 142 address TemplateInterpreterGenerator::generate_continuation_for(TosState state) {
+ 143   address entry = __ pc();
+ 144   __ unimplemented("generate_continuation_for");
+ 145   return entry;
+ 146 }
+ 147 
+ 148 // This entry is returned to when a call returns to the interpreter.
+ 149 // When we arrive here, we expect that the callee stack frame is already popped.
+ 150 address TemplateInterpreterGenerator::generate_return_entry_for(TosState state, int step, size_t index_size) {
+ 151   address entry = __ pc();
+ 152 
+ 153   // Move the value out of the return register back to the TOS cache of current frame.
+ 154   switch (state) {
+ 155     case ltos:
+ 156     case btos:
+ 157     case ztos:
+ 158     case ctos:
+ 159     case stos:
+ 160     case atos:
+ 161     case itos: __ mr(R17_tos, R3_RET); break;   // RET -&gt; TOS cache
+ 162     case ftos:
+ 163     case dtos: __ fmr(F15_ftos, F1_RET); break; // TOS cache -&gt; GR_FRET
+ 164     case vtos: break;                           // Nothing to do, this was a void return.
+ 165     default  : ShouldNotReachHere();
+ 166   }
+ 167 
+ 168   __ restore_interpreter_state(R11_scratch1); // Sets R11_scratch1 = fp.
+ 169   __ ld(R12_scratch2, _ijava_state_neg(top_frame_sp), R11_scratch1);
+ 170   __ resize_frame_absolute(R12_scratch2, R11_scratch1, R0);
+ 171 
+ 172   // Compiled code destroys templateTableBase, reload.
+ 173   __ load_const_optimized(R25_templateTableBase, (address)Interpreter::dispatch_table((TosState)0), R12_scratch2);
+ 174 
+ 175   if (state == atos) {
+ 176     __ profile_return_type(R3_RET, R11_scratch1, R12_scratch2);
+ 177   }
+ 178 
+ 179   const Register cache = R11_scratch1;
+ 180   const Register size  = R12_scratch2;
+ 181   __ get_cache_and_index_at_bcp(cache, 1, index_size);
+ 182 
+ 183   // Get least significant byte of 64 bit value:
+ 184 #if defined(VM_LITTLE_ENDIAN)
+ 185   __ lbz(size, in_bytes(ConstantPoolCache::base_offset() + ConstantPoolCacheEntry::flags_offset()), cache);
+ 186 #else
+ 187   __ lbz(size, in_bytes(ConstantPoolCache::base_offset() + ConstantPoolCacheEntry::flags_offset()) + 7, cache);
+ 188 #endif
+ 189   __ sldi(size, size, Interpreter::logStackElementSize);
+ 190   __ add(R15_esp, R15_esp, size);
+ 191   __ dispatch_next(state, step);
+ 192   return entry;
+ 193 }
+ 194 
+ 195 address TemplateInterpreterGenerator::generate_deopt_entry_for(TosState state, int step) {
+ 196   address entry = __ pc();
+ 197   // If state != vtos, we're returning from a native method, which put it's result
+ 198   // into the result register. So move the value out of the return register back
+ 199   // to the TOS cache of current frame.
+ 200 
+ 201   switch (state) {
+ 202     case ltos:
+ 203     case btos:
+ 204     case ztos:
+ 205     case ctos:
+ 206     case stos:
+ 207     case atos:
+ 208     case itos: __ mr(R17_tos, R3_RET); break;   // GR_RET -&gt; TOS cache
+ 209     case ftos:
+ 210     case dtos: __ fmr(F15_ftos, F1_RET); break; // TOS cache -&gt; GR_FRET
+ 211     case vtos: break;                           // Nothing to do, this was a void return.
+ 212     default  : ShouldNotReachHere();
+ 213   }
+ 214 
+ 215   // Load LcpoolCache @@@ should be already set!
+ 216   __ get_constant_pool_cache(R27_constPoolCache);
+ 217 
+ 218   // Handle a pending exception, fall through if none.
+ 219   __ check_and_forward_exception(R11_scratch1, R12_scratch2);
+ 220 
+ 221   // Start executing bytecodes.
+ 222   __ dispatch_next(state, step);
+ 223 
+ 224   return entry;
+ 225 }
+ 226 
+ 227 // A result handler converts the native result into java format.
+ 228 // Use the shared code between c++ and template interpreter.
+ 229 address TemplateInterpreterGenerator::generate_result_handler_for(BasicType type) {
+ 230   return AbstractInterpreterGenerator::generate_result_handler_for(type);
+ 231 }
+ 232 
+ 233 address TemplateInterpreterGenerator::generate_safept_entry_for(TosState state, address runtime_entry) {
+ 234   address entry = __ pc();
+ 235 
+ 236   __ push(state);
+ 237   __ call_VM(noreg, runtime_entry);
+ 238   __ dispatch_via(vtos, Interpreter::_normal_table.table_for(vtos));
+ 239 
+ 240   return entry;
+ 241 }
+ 242 
+ 243 // Helpers for commoning out cases in the various type of method entries.
+ 244 
+ 245 // Increment invocation count &amp; check for overflow.
+ 246 //
+ 247 // Note: checking for negative value instead of overflow
+ 248 //       so we have a 'sticky' overflow test.
+ 249 //
+ 250 void TemplateInterpreterGenerator::generate_counter_incr(Label* overflow, Label* profile_method, Label* profile_method_continue) {
+ 251   // Note: In tiered we increment either counters in method or in MDO depending if we're profiling or not.
+ 252   Register Rscratch1   = R11_scratch1;
+ 253   Register Rscratch2   = R12_scratch2;
+ 254   Register R3_counters = R3_ARG1;
+ 255   Label done;
+ 256 
+ 257   if (TieredCompilation) {
+ 258     const int increment = InvocationCounter::count_increment;
+ 259     const int mask = ((1 &lt;&lt; Tier0InvokeNotifyFreqLog) - 1) &lt;&lt; InvocationCounter::count_shift;
+ 260     Label no_mdo;
+ 261     if (ProfileInterpreter) {
+ 262       const Register Rmdo = Rscratch1;
+ 263       // If no method data exists, go to profile_continue.
+ 264       __ ld(Rmdo, in_bytes(Method::method_data_offset()), R19_method);
+ 265       __ cmpdi(CCR0, Rmdo, 0);
+ 266       __ beq(CCR0, no_mdo);
+ 267 
+<a name="1" id="anc1"></a><span class="changed"> 268       // Increment backedge counter in the MDO.</span>
+ 269       const int mdo_bc_offs = in_bytes(MethodData::backedge_counter_offset()) + in_bytes(InvocationCounter::counter_offset());
+ 270       __ lwz(Rscratch2, mdo_bc_offs, Rmdo);
+ 271       __ addi(Rscratch2, Rscratch2, increment);
+ 272       __ stw(Rscratch2, mdo_bc_offs, Rmdo);
+ 273       __ load_const_optimized(Rscratch1, mask, R0);
+ 274       __ and_(Rscratch1, Rscratch2, Rscratch1);
+ 275       __ bne(CCR0, done);
+ 276       __ b(*overflow);
+ 277     }
+ 278 
+ 279     // Increment counter in MethodCounters*.
+<a name="2" id="anc2"></a><span class="changed"> 280     const int mo_bc_offs = in_bytes(MethodCounters::backedge_counter_offset()) + in_bytes(InvocationCounter::counter_offset());</span>
+ 281     __ bind(no_mdo);
+ 282     __ get_method_counters(R19_method, R3_counters, done);
+<a name="3" id="anc3"></a><span class="changed"> 283     __ lwz(Rscratch2, mo_bc_offs, R3_counters);</span>
+ 284     __ addi(Rscratch2, Rscratch2, increment);
+<a name="4" id="anc4"></a><span class="changed"> 285     __ stw(Rscratch2, mo_bc_offs, R3_counters);</span>
+ 286     __ load_const_optimized(Rscratch1, mask, R0);
+ 287     __ and_(Rscratch1, Rscratch2, Rscratch1);
+ 288     __ beq(CCR0, *overflow);
+ 289 
+ 290     __ bind(done);
+ 291 
+ 292   } else {
+ 293 
+ 294     // Update standard invocation counters.
+ 295     Register Rsum_ivc_bec = R4_ARG2;
+ 296     __ get_method_counters(R19_method, R3_counters, done);
+ 297     __ increment_invocation_counter(R3_counters, Rsum_ivc_bec, R12_scratch2);
+ 298     // Increment interpreter invocation counter.
+ 299     if (ProfileInterpreter) {  // %%% Merge this into methodDataOop.
+ 300       __ lwz(R12_scratch2, in_bytes(MethodCounters::interpreter_invocation_counter_offset()), R3_counters);
+ 301       __ addi(R12_scratch2, R12_scratch2, 1);
+ 302       __ stw(R12_scratch2, in_bytes(MethodCounters::interpreter_invocation_counter_offset()), R3_counters);
+ 303     }
+ 304     // Check if we must create a method data obj.
+ 305     if (ProfileInterpreter &amp;&amp; profile_method != NULL) {
+ 306       const Register profile_limit = Rscratch1;
+ 307       int pl_offs = __ load_const_optimized(profile_limit, &amp;InvocationCounter::InterpreterProfileLimit, R0, true);
+ 308       __ lwz(profile_limit, pl_offs, profile_limit);
+ 309       // Test to see if we should create a method data oop.
+ 310       __ cmpw(CCR0, Rsum_ivc_bec, profile_limit);
+ 311       __ blt(CCR0, *profile_method_continue);
+ 312       // If no method data exists, go to profile_method.
+ 313       __ test_method_data_pointer(*profile_method);
+ 314     }
+ 315     // Finally check for counter overflow.
+ 316     if (overflow) {
+ 317       const Register invocation_limit = Rscratch1;
+ 318       int il_offs = __ load_const_optimized(invocation_limit, &amp;InvocationCounter::InterpreterInvocationLimit, R0, true);
+ 319       __ lwz(invocation_limit, il_offs, invocation_limit);
+ 320       assert(4 == sizeof(InvocationCounter::InterpreterInvocationLimit), "unexpected field size");
+ 321       __ cmpw(CCR0, Rsum_ivc_bec, invocation_limit);
+ 322       __ bge(CCR0, *overflow);
+ 323     }
+ 324 
+ 325     __ bind(done);
+ 326   }
+ 327 }
+ 328 
+ 329 // Generate code to initiate compilation on invocation counter overflow.
+ 330 void TemplateInterpreterGenerator::generate_counter_overflow(Label&amp; continue_entry) {
+ 331   // Generate code to initiate compilation on the counter overflow.
+ 332 
+ 333   // InterpreterRuntime::frequency_counter_overflow takes one arguments,
+ 334   // which indicates if the counter overflow occurs at a backwards branch (NULL bcp)
+ 335   // We pass zero in.
+ 336   // The call returns the address of the verified entry point for the method or NULL
+ 337   // if the compilation did not complete (either went background or bailed out).
+ 338   //
+ 339   // Unlike the C++ interpreter above: Check exceptions!
+ 340   // Assumption: Caller must set the flag "do_not_unlock_if_sychronized" if the monitor of a sync'ed
+ 341   // method has not yet been created. Thus, no unlocking of a non-existing monitor can occur.
+ 342 
+ 343   __ li(R4_ARG2, 0);
+ 344   __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::frequency_counter_overflow), R4_ARG2, true);
+ 345 
+ 346   // Returns verified_entry_point or NULL.
+ 347   // We ignore it in any case.
+ 348   __ b(continue_entry);
+ 349 }
+ 350 
+ 351 void TemplateInterpreterGenerator::generate_stack_overflow_check(Register Rmem_frame_size, Register Rscratch1) {
+ 352   assert_different_registers(Rmem_frame_size, Rscratch1);
+ 353   __ generate_stack_overflow_check_with_compare_and_throw(Rmem_frame_size, Rscratch1);
+ 354 }
+ 355 
+ 356 void TemplateInterpreterGenerator::unlock_method(bool check_exceptions) {
+ 357   __ unlock_object(R26_monitor, check_exceptions);
+ 358 }
+ 359 
+ 360 // Lock the current method, interpreter register window must be set up!
+ 361 void TemplateInterpreterGenerator::lock_method(Register Rflags, Register Rscratch1, Register Rscratch2, bool flags_preloaded) {
+ 362   const Register Robj_to_lock = Rscratch2;
+ 363 
+ 364   {
+ 365     if (!flags_preloaded) {
+ 366       __ lwz(Rflags, method_(access_flags));
+ 367     }
+ 368 
+ 369 #ifdef ASSERT
+ 370     // Check if methods needs synchronization.
+ 371     {
+ 372       Label Lok;
+ 373       __ testbitdi(CCR0, R0, Rflags, JVM_ACC_SYNCHRONIZED_BIT);
+ 374       __ btrue(CCR0,Lok);
+ 375       __ stop("method doesn't need synchronization");
+ 376       __ bind(Lok);
+ 377     }
+ 378 #endif // ASSERT
+ 379   }
+ 380 
+ 381   // Get synchronization object to Rscratch2.
+ 382   {
+ 383     const int mirror_offset = in_bytes(Klass::java_mirror_offset());
+ 384     Label Lstatic;
+ 385     Label Ldone;
+ 386 
+ 387     __ testbitdi(CCR0, R0, Rflags, JVM_ACC_STATIC_BIT);
+ 388     __ btrue(CCR0, Lstatic);
+ 389 
+ 390     // Non-static case: load receiver obj from stack and we're done.
+ 391     __ ld(Robj_to_lock, R18_locals);
+ 392     __ b(Ldone);
+ 393 
+ 394     __ bind(Lstatic); // Static case: Lock the java mirror
+ 395     __ ld(Robj_to_lock, in_bytes(Method::const_offset()), R19_method);
+ 396     __ ld(Robj_to_lock, in_bytes(ConstMethod::constants_offset()), Robj_to_lock);
+ 397     __ ld(Robj_to_lock, ConstantPool::pool_holder_offset_in_bytes(), Robj_to_lock);
+ 398     __ ld(Robj_to_lock, mirror_offset, Robj_to_lock);
+ 399 
+ 400     __ bind(Ldone);
+ 401     __ verify_oop(Robj_to_lock);
+ 402   }
+ 403 
+ 404   // Got the oop to lock =&gt; execute!
+ 405   __ add_monitor_to_stack(true, Rscratch1, R0);
+ 406 
+ 407   __ std(Robj_to_lock, BasicObjectLock::obj_offset_in_bytes(), R26_monitor);
+ 408   __ lock_object(R26_monitor, Robj_to_lock);
+ 409 }
+ 410 
+ 411 // Generate a fixed interpreter frame for pure interpreter
+ 412 // and I2N native transition frames.
+ 413 //
+ 414 // Before (stack grows downwards):
+ 415 //
+ 416 //         |  ...         |
+ 417 //         |------------- |
+ 418 //         |  java arg0   |
+ 419 //         |  ...         |
+ 420 //         |  java argn   |
+ 421 //         |              |   &lt;-   R15_esp
+ 422 //         |              |
+ 423 //         |--------------|
+ 424 //         | abi_112      |
+ 425 //         |              |   &lt;-   R1_SP
+ 426 //         |==============|
+ 427 //
+ 428 //
+ 429 // After:
+ 430 //
+ 431 //         |  ...         |
+ 432 //         |  java arg0   |&lt;-   R18_locals
+ 433 //         |  ...         |
+ 434 //         |  java argn   |
+ 435 //         |--------------|
+ 436 //         |              |
+ 437 //         |  java locals |
+ 438 //         |              |
+ 439 //         |--------------|
+ 440 //         |  abi_48      |
+ 441 //         |==============|
+ 442 //         |              |
+ 443 //         |   istate     |
+ 444 //         |              |
+ 445 //         |--------------|
+ 446 //         |   monitor    |&lt;-   R26_monitor
+ 447 //         |--------------|
+ 448 //         |              |&lt;-   R15_esp
+ 449 //         | expression   |
+ 450 //         | stack        |
+ 451 //         |              |
+ 452 //         |--------------|
+ 453 //         |              |
+ 454 //         | abi_112      |&lt;-   R1_SP
+ 455 //         |==============|
+ 456 //
+ 457 // The top most frame needs an abi space of 112 bytes. This space is needed,
+ 458 // since we call to c. The c function may spill their arguments to the caller
+ 459 // frame. When we call to java, we don't need these spill slots. In order to save
+ 460 // space on the stack, we resize the caller. However, java local reside in
+ 461 // the caller frame and the frame has to be increased. The frame_size for the
+ 462 // current frame was calculated based on max_stack as size for the expression
+ 463 // stack. At the call, just a part of the expression stack might be used.
+ 464 // We don't want to waste this space and cut the frame back accordingly.
+ 465 // The resulting amount for resizing is calculated as follows:
+ 466 // resize =   (number_of_locals - number_of_arguments) * slot_size
+ 467 //          + (R1_SP - R15_esp) + 48
+ 468 //
+ 469 // The size for the callee frame is calculated:
+ 470 // framesize = 112 + max_stack + monitor + state_size
+ 471 //
+ 472 // maxstack:   Max number of slots on the expression stack, loaded from the method.
+ 473 // monitor:    We statically reserve room for one monitor object.
+ 474 // state_size: We save the current state of the interpreter to this area.
+ 475 //
+ 476 void TemplateInterpreterGenerator::generate_fixed_frame(bool native_call, Register Rsize_of_parameters, Register Rsize_of_locals) {
+ 477   Register parent_frame_resize = R6_ARG4, // Frame will grow by this number of bytes.
+ 478            top_frame_size      = R7_ARG5,
+ 479            Rconst_method       = R8_ARG6;
+ 480 
+ 481   assert_different_registers(Rsize_of_parameters, Rsize_of_locals, parent_frame_resize, top_frame_size);
+ 482 
+ 483   __ ld(Rconst_method, method_(const));
+ 484   __ lhz(Rsize_of_parameters /* number of params */,
+ 485          in_bytes(ConstMethod::size_of_parameters_offset()), Rconst_method);
+ 486   if (native_call) {
+ 487     // If we're calling a native method, we reserve space for the worst-case signature
+ 488     // handler varargs vector, which is max(Argument::n_register_parameters, parameter_count+2).
+ 489     // We add two slots to the parameter_count, one for the jni
+ 490     // environment and one for a possible native mirror.
+ 491     Label skip_native_calculate_max_stack;
+ 492     __ addi(top_frame_size, Rsize_of_parameters, 2);
+ 493     __ cmpwi(CCR0, top_frame_size, Argument::n_register_parameters);
+ 494     __ bge(CCR0, skip_native_calculate_max_stack);
+ 495     __ li(top_frame_size, Argument::n_register_parameters);
+ 496     __ bind(skip_native_calculate_max_stack);
+ 497     __ sldi(Rsize_of_parameters, Rsize_of_parameters, Interpreter::logStackElementSize);
+ 498     __ sldi(top_frame_size, top_frame_size, Interpreter::logStackElementSize);
+ 499     __ sub(parent_frame_resize, R1_SP, R15_esp); // &lt;0, off by Interpreter::stackElementSize!
+ 500     assert(Rsize_of_locals == noreg, "Rsize_of_locals not initialized"); // Only relevant value is Rsize_of_parameters.
+ 501   } else {
+ 502     __ lhz(Rsize_of_locals /* number of params */, in_bytes(ConstMethod::size_of_locals_offset()), Rconst_method);
+ 503     __ sldi(Rsize_of_parameters, Rsize_of_parameters, Interpreter::logStackElementSize);
+ 504     __ sldi(Rsize_of_locals, Rsize_of_locals, Interpreter::logStackElementSize);
+ 505     __ lhz(top_frame_size, in_bytes(ConstMethod::max_stack_offset()), Rconst_method);
+ 506     __ sub(R11_scratch1, Rsize_of_locals, Rsize_of_parameters); // &gt;=0
+ 507     __ sub(parent_frame_resize, R1_SP, R15_esp); // &lt;0, off by Interpreter::stackElementSize!
+ 508     __ sldi(top_frame_size, top_frame_size, Interpreter::logStackElementSize);
+ 509     __ add(parent_frame_resize, parent_frame_resize, R11_scratch1);
+ 510   }
+ 511 
+ 512   // Compute top frame size.
+ 513   __ addi(top_frame_size, top_frame_size, frame::abi_reg_args_size + frame::ijava_state_size);
+ 514 
+ 515   // Cut back area between esp and max_stack.
+ 516   __ addi(parent_frame_resize, parent_frame_resize, frame::abi_minframe_size - Interpreter::stackElementSize);
+ 517 
+ 518   __ round_to(top_frame_size, frame::alignment_in_bytes);
+ 519   __ round_to(parent_frame_resize, frame::alignment_in_bytes);
+ 520   // parent_frame_resize = (locals-parameters) - (ESP-SP-ABI48) Rounded to frame alignment size.
+ 521   // Enlarge by locals-parameters (not in case of native_call), shrink by ESP-SP-ABI48.
+ 522 
+ 523   {
+ 524     // --------------------------------------------------------------------------
+ 525     // Stack overflow check
+ 526 
+ 527     Label cont;
+ 528     __ add(R11_scratch1, parent_frame_resize, top_frame_size);
+ 529     generate_stack_overflow_check(R11_scratch1, R12_scratch2);
+ 530   }
+ 531 
+ 532   // Set up interpreter state registers.
+ 533 
+ 534   __ add(R18_locals, R15_esp, Rsize_of_parameters);
+ 535   __ ld(R27_constPoolCache, in_bytes(ConstMethod::constants_offset()), Rconst_method);
+ 536   __ ld(R27_constPoolCache, ConstantPool::cache_offset_in_bytes(), R27_constPoolCache);
+ 537 
+ 538   // Set method data pointer.
+ 539   if (ProfileInterpreter) {
+ 540     Label zero_continue;
+ 541     __ ld(R28_mdx, method_(method_data));
+ 542     __ cmpdi(CCR0, R28_mdx, 0);
+ 543     __ beq(CCR0, zero_continue);
+ 544     __ addi(R28_mdx, R28_mdx, in_bytes(MethodData::data_offset()));
+ 545     __ bind(zero_continue);
+ 546   }
+ 547 
+ 548   if (native_call) {
+ 549     __ li(R14_bcp, 0); // Must initialize.
+ 550   } else {
+ 551     __ add(R14_bcp, in_bytes(ConstMethod::codes_offset()), Rconst_method);
+ 552   }
+ 553 
+ 554   // Resize parent frame.
+ 555   __ mflr(R12_scratch2);
+ 556   __ neg(parent_frame_resize, parent_frame_resize);
+ 557   __ resize_frame(parent_frame_resize, R11_scratch1);
+ 558   __ std(R12_scratch2, _abi(lr), R1_SP);
+ 559 
+ 560   __ addi(R26_monitor, R1_SP, - frame::ijava_state_size);
+ 561   __ addi(R15_esp, R26_monitor, - Interpreter::stackElementSize);
+ 562 
+ 563   // Store values.
+ 564   // R15_esp, R14_bcp, R26_monitor, R28_mdx are saved at java calls
+ 565   // in InterpreterMacroAssembler::call_from_interpreter.
+ 566   __ std(R19_method, _ijava_state_neg(method), R1_SP);
+ 567   __ std(R21_sender_SP, _ijava_state_neg(sender_sp), R1_SP);
+ 568   __ std(R27_constPoolCache, _ijava_state_neg(cpoolCache), R1_SP);
+ 569   __ std(R18_locals, _ijava_state_neg(locals), R1_SP);
+ 570 
+ 571   // Note: esp, bcp, monitor, mdx live in registers. Hence, the correct version can only
+ 572   // be found in the frame after save_interpreter_state is done. This is always true
+ 573   // for non-top frames. But when a signal occurs, dumping the top frame can go wrong,
+ 574   // because e.g. frame::interpreter_frame_bcp() will not access the correct value
+ 575   // (Enhanced Stack Trace).
+ 576   // The signal handler does not save the interpreter state into the frame.
+ 577   __ li(R0, 0);
+ 578 #ifdef ASSERT
+ 579   // Fill remaining slots with constants.
+ 580   __ load_const_optimized(R11_scratch1, 0x5afe);
+ 581   __ load_const_optimized(R12_scratch2, 0xdead);
+ 582 #endif
+ 583   // We have to initialize some frame slots for native calls (accessed by GC).
+ 584   if (native_call) {
+ 585     __ std(R26_monitor, _ijava_state_neg(monitors), R1_SP);
+ 586     __ std(R14_bcp, _ijava_state_neg(bcp), R1_SP);
+ 587     if (ProfileInterpreter) { __ std(R28_mdx, _ijava_state_neg(mdx), R1_SP); }
+ 588   }
+ 589 #ifdef ASSERT
+ 590   else {
+ 591     __ std(R12_scratch2, _ijava_state_neg(monitors), R1_SP);
+ 592     __ std(R12_scratch2, _ijava_state_neg(bcp), R1_SP);
+ 593     __ std(R12_scratch2, _ijava_state_neg(mdx), R1_SP);
+ 594   }
+ 595   __ std(R11_scratch1, _ijava_state_neg(ijava_reserved), R1_SP);
+ 596   __ std(R12_scratch2, _ijava_state_neg(esp), R1_SP);
+ 597   __ std(R12_scratch2, _ijava_state_neg(lresult), R1_SP);
+ 598   __ std(R12_scratch2, _ijava_state_neg(fresult), R1_SP);
+ 599 #endif
+ 600   __ subf(R12_scratch2, top_frame_size, R1_SP);
+ 601   __ std(R0, _ijava_state_neg(oop_tmp), R1_SP);
+ 602   __ std(R12_scratch2, _ijava_state_neg(top_frame_sp), R1_SP);
+ 603 
+ 604   // Push top frame.
+ 605   __ push_frame(top_frame_size, R11_scratch1);
+ 606 }
+ 607 
+ 608 // End of helpers
+ 609 
+ 610 // ============================================================================
+ 611 // Various method entries
+ 612 //
+ 613 
+ 614 // Empty method, generate a very fast return. We must skip this entry if
+ 615 // someone's debugging, indicated by the flag
+ 616 // "interp_mode" in the Thread obj.
+ 617 // Note: empty methods are generated mostly methods that do assertions, which are
+ 618 // disabled in the "java opt build".
+ 619 address TemplateInterpreterGenerator::generate_empty_entry(void) {
+ 620   if (!UseFastEmptyMethods) {
+ 621     NOT_PRODUCT(__ should_not_reach_here();)
+ 622     return Interpreter::entry_for_kind(Interpreter::zerolocals);
+ 623   }
+ 624 
+ 625   Label Lslow_path;
+ 626   const Register Rjvmti_mode = R11_scratch1;
+ 627   address entry = __ pc();
+ 628 
+ 629   __ lwz(Rjvmti_mode, thread_(interp_only_mode));
+ 630   __ cmpwi(CCR0, Rjvmti_mode, 0);
+ 631   __ bne(CCR0, Lslow_path); // jvmti_mode!=0
+ 632 
+ 633   // Noone's debuggin: Simply return.
+ 634   // Pop c2i arguments (if any) off when we return.
+ 635 #ifdef ASSERT
+ 636     __ ld(R9_ARG7, 0, R1_SP);
+ 637     __ ld(R10_ARG8, 0, R21_sender_SP);
+ 638     __ cmpd(CCR0, R9_ARG7, R10_ARG8);
+ 639     __ asm_assert_eq("backlink", 0x545);
+ 640 #endif // ASSERT
+ 641   __ mr(R1_SP, R21_sender_SP); // Cut the stack back to where the caller started.
+ 642 
+ 643   // And we're done.
+ 644   __ blr();
+ 645 
+ 646   __ bind(Lslow_path);
+ 647   __ branch_to_entry(Interpreter::entry_for_kind(Interpreter::zerolocals), R11_scratch1);
+ 648   __ flush();
+ 649 
+ 650   return entry;
+ 651 }
+ 652 
+ 653 // Support abs and sqrt like in compiler.
+ 654 // For others we can use a normal (native) entry.
+ 655 
+ 656 inline bool math_entry_available(AbstractInterpreter::MethodKind kind) {
+ 657   // Provide math entry with debugging on demand.
+ 658   // Note: Debugging changes which code will get executed:
+ 659   // Debugging or disabled InlineIntrinsics: java method will get interpreted and performs a native call.
+ 660   // Not debugging and enabled InlineIntrinics: processor instruction will get used.
+ 661   // Result might differ slightly due to rounding etc.
+ 662   if (!InlineIntrinsics &amp;&amp; (!FLAG_IS_ERGO(InlineIntrinsics))) return false; // Generate a vanilla entry.
+ 663 
+ 664   return ((kind==Interpreter::java_lang_math_sqrt &amp;&amp; VM_Version::has_fsqrt()) ||
+ 665           (kind==Interpreter::java_lang_math_abs));
+ 666 }
+ 667 
+ 668 address TemplateInterpreterGenerator::generate_math_entry(AbstractInterpreter::MethodKind kind) {
+ 669   if (!math_entry_available(kind)) {
+ 670     NOT_PRODUCT(__ should_not_reach_here();)
+ 671     return Interpreter::entry_for_kind(Interpreter::zerolocals);
+ 672   }
+ 673 
+ 674   Label Lslow_path;
+ 675   const Register Rjvmti_mode = R11_scratch1;
+ 676   address entry = __ pc();
+ 677 
+ 678   // Provide math entry with debugging on demand.
+ 679   __ lwz(Rjvmti_mode, thread_(interp_only_mode));
+ 680   __ cmpwi(CCR0, Rjvmti_mode, 0);
+ 681   __ bne(CCR0, Lslow_path); // jvmti_mode!=0
+ 682 
+ 683   __ lfd(F1_RET, Interpreter::stackElementSize, R15_esp);
+ 684 
+ 685   // Pop c2i arguments (if any) off when we return.
+ 686 #ifdef ASSERT
+ 687   __ ld(R9_ARG7, 0, R1_SP);
+ 688   __ ld(R10_ARG8, 0, R21_sender_SP);
+ 689   __ cmpd(CCR0, R9_ARG7, R10_ARG8);
+ 690   __ asm_assert_eq("backlink", 0x545);
+ 691 #endif // ASSERT
+ 692   __ mr(R1_SP, R21_sender_SP); // Cut the stack back to where the caller started.
+ 693 
+ 694   if (kind == Interpreter::java_lang_math_sqrt) {
+ 695     __ fsqrt(F1_RET, F1_RET);
+ 696   } else if (kind == Interpreter::java_lang_math_abs) {
+ 697     __ fabs(F1_RET, F1_RET);
+ 698   } else {
+ 699     ShouldNotReachHere();
+ 700   }
+ 701 
+ 702   // And we're done.
+ 703   __ blr();
+ 704 
+ 705   // Provide slow path for JVMTI case.
+ 706   __ bind(Lslow_path);
+ 707   __ branch_to_entry(Interpreter::entry_for_kind(Interpreter::zerolocals), R12_scratch2);
+ 708   __ flush();
+ 709 
+ 710   return entry;
+ 711 }
+ 712 
+ 713 // Interpreter stub for calling a native method. (asm interpreter)
+ 714 // This sets up a somewhat different looking stack for calling the
+ 715 // native method than the typical interpreter frame setup.
+ 716 //
+ 717 // On entry:
+ 718 //   R19_method    - method
+ 719 //   R16_thread    - JavaThread*
+ 720 //   R15_esp       - intptr_t* sender tos
+ 721 //
+ 722 //   abstract stack (grows up)
+ 723 //     [  IJava (caller of JNI callee)  ]  &lt;-- ASP
+ 724 //        ...
+ 725 address TemplateInterpreterGenerator::generate_native_entry(bool synchronized) {
+ 726 
+ 727   address entry = __ pc();
+ 728 
+ 729   const bool inc_counter = UseCompiler || CountCompiledCalls;
+ 730 
+ 731   // -----------------------------------------------------------------------------
+ 732   // Allocate a new frame that represents the native callee (i2n frame).
+ 733   // This is not a full-blown interpreter frame, but in particular, the
+ 734   // following registers are valid after this:
+ 735   // - R19_method
+ 736   // - R18_local (points to start of argumuments to native function)
+ 737   //
+ 738   //   abstract stack (grows up)
+ 739   //     [  IJava (caller of JNI callee)  ]  &lt;-- ASP
+ 740   //        ...
+ 741 
+ 742   const Register signature_handler_fd = R11_scratch1;
+ 743   const Register pending_exception    = R0;
+ 744   const Register result_handler_addr  = R31;
+ 745   const Register native_method_fd     = R11_scratch1;
+ 746   const Register access_flags         = R22_tmp2;
+ 747   const Register active_handles       = R11_scratch1; // R26_monitor saved to state.
+ 748   const Register sync_state           = R12_scratch2;
+ 749   const Register sync_state_addr      = sync_state;   // Address is dead after use.
+ 750   const Register suspend_flags        = R11_scratch1;
+ 751 
+ 752   //=============================================================================
+ 753   // Allocate new frame and initialize interpreter state.
+ 754 
+ 755   Label exception_return;
+ 756   Label exception_return_sync_check;
+ 757   Label stack_overflow_return;
+ 758 
+ 759   // Generate new interpreter state and jump to stack_overflow_return in case of
+ 760   // a stack overflow.
+ 761   //generate_compute_interpreter_state(stack_overflow_return);
+ 762 
+ 763   Register size_of_parameters = R22_tmp2;
+ 764 
+ 765   generate_fixed_frame(true, size_of_parameters, noreg /* unused */);
+ 766 
+ 767   //=============================================================================
+ 768   // Increment invocation counter. On overflow, entry to JNI method
+ 769   // will be compiled.
+ 770   Label invocation_counter_overflow, continue_after_compile;
+ 771   if (inc_counter) {
+ 772     if (synchronized) {
+ 773       // Since at this point in the method invocation the exception handler
+ 774       // would try to exit the monitor of synchronized methods which hasn't
+ 775       // been entered yet, we set the thread local variable
+ 776       // _do_not_unlock_if_synchronized to true. If any exception was thrown by
+ 777       // runtime, exception handling i.e. unlock_if_synchronized_method will
+ 778       // check this thread local flag.
+ 779       // This flag has two effects, one is to force an unwind in the topmost
+ 780       // interpreter frame and not perform an unlock while doing so.
+ 781       __ li(R0, 1);
+ 782       __ stb(R0, in_bytes(JavaThread::do_not_unlock_if_synchronized_offset()), R16_thread);
+ 783     }
+ 784     generate_counter_incr(&amp;invocation_counter_overflow, NULL, NULL);
+ 785 
+ 786     __ BIND(continue_after_compile);
+ 787     // Reset the _do_not_unlock_if_synchronized flag.
+ 788     if (synchronized) {
+ 789       __ li(R0, 0);
+ 790       __ stb(R0, in_bytes(JavaThread::do_not_unlock_if_synchronized_offset()), R16_thread);
+ 791     }
+ 792   }
+ 793 
+ 794   // access_flags = method-&gt;access_flags();
+ 795   // Load access flags.
+ 796   assert(access_flags-&gt;is_nonvolatile(),
+ 797          "access_flags must be in a non-volatile register");
+ 798   // Type check.
+ 799   assert(4 == sizeof(AccessFlags), "unexpected field size");
+ 800   __ lwz(access_flags, method_(access_flags));
+ 801 
+ 802   // We don't want to reload R19_method and access_flags after calls
+ 803   // to some helper functions.
+ 804   assert(R19_method-&gt;is_nonvolatile(),
+ 805          "R19_method must be a non-volatile register");
+ 806 
+ 807   // Check for synchronized methods. Must happen AFTER invocation counter
+ 808   // check, so method is not locked if counter overflows.
+ 809 
+ 810   if (synchronized) {
+ 811     lock_method(access_flags, R11_scratch1, R12_scratch2, true);
+ 812 
+ 813     // Update monitor in state.
+ 814     __ ld(R11_scratch1, 0, R1_SP);
+ 815     __ std(R26_monitor, _ijava_state_neg(monitors), R11_scratch1);
+ 816   }
+ 817 
+ 818   // jvmti/jvmpi support
+ 819   __ notify_method_entry();
+ 820 
+ 821   //=============================================================================
+ 822   // Get and call the signature handler.
+ 823 
+ 824   __ ld(signature_handler_fd, method_(signature_handler));
+ 825   Label call_signature_handler;
+ 826 
+ 827   __ cmpdi(CCR0, signature_handler_fd, 0);
+ 828   __ bne(CCR0, call_signature_handler);
+ 829 
+ 830   // Method has never been called. Either generate a specialized
+ 831   // handler or point to the slow one.
+ 832   //
+ 833   // Pass parameter 'false' to avoid exception check in call_VM.
+ 834   __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::prepare_native_call), R19_method, false);
+ 835 
+ 836   // Check for an exception while looking up the target method. If we
+ 837   // incurred one, bail.
+ 838   __ ld(pending_exception, thread_(pending_exception));
+ 839   __ cmpdi(CCR0, pending_exception, 0);
+ 840   __ bne(CCR0, exception_return_sync_check); // Has pending exception.
+ 841 
+ 842   // Reload signature handler, it may have been created/assigned in the meanwhile.
+ 843   __ ld(signature_handler_fd, method_(signature_handler));
+ 844   __ twi_0(signature_handler_fd); // Order wrt. load of klass mirror and entry point (isync is below).
+ 845 
+ 846   __ BIND(call_signature_handler);
+ 847 
+ 848   // Before we call the signature handler we push a new frame to
+ 849   // protect the interpreter frame volatile registers when we return
+ 850   // from jni but before we can get back to Java.
+ 851 
+ 852   // First set the frame anchor while the SP/FP registers are
+ 853   // convenient and the slow signature handler can use this same frame
+ 854   // anchor.
+ 855 
+ 856   // We have a TOP_IJAVA_FRAME here, which belongs to us.
+ 857   __ set_top_ijava_frame_at_SP_as_last_Java_frame(R1_SP, R12_scratch2/*tmp*/);
+ 858 
+ 859   // Now the interpreter frame (and its call chain) have been
+ 860   // invalidated and flushed. We are now protected against eager
+ 861   // being enabled in native code. Even if it goes eager the
+ 862   // registers will be reloaded as clean and we will invalidate after
+ 863   // the call so no spurious flush should be possible.
+ 864 
+ 865   // Call signature handler and pass locals address.
+ 866   //
+ 867   // Our signature handlers copy required arguments to the C stack
+ 868   // (outgoing C args), R3_ARG1 to R10_ARG8, and FARG1 to FARG13.
+ 869   __ mr(R3_ARG1, R18_locals);
+ 870 #if !defined(ABI_ELFv2)
+ 871   __ ld(signature_handler_fd, 0, signature_handler_fd);
+ 872 #endif
+ 873 
+ 874   __ call_stub(signature_handler_fd);
+ 875 
+ 876   // Remove the register parameter varargs slots we allocated in
+ 877   // compute_interpreter_state. SP+16 ends up pointing to the ABI
+ 878   // outgoing argument area.
+ 879   //
+ 880   // Not needed on PPC64.
+ 881   //__ add(SP, SP, Argument::n_register_parameters*BytesPerWord);
+ 882 
+ 883   assert(result_handler_addr-&gt;is_nonvolatile(), "result_handler_addr must be in a non-volatile register");
+ 884   // Save across call to native method.
+ 885   __ mr(result_handler_addr, R3_RET);
+ 886 
+ 887   __ isync(); // Acquire signature handler before trying to fetch the native entry point and klass mirror.
+ 888 
+ 889   // Set up fixed parameters and call the native method.
+ 890   // If the method is static, get mirror into R4_ARG2.
+ 891   {
+ 892     Label method_is_not_static;
+ 893     // Access_flags is non-volatile and still, no need to restore it.
+ 894 
+ 895     // Restore access flags.
+ 896     __ testbitdi(CCR0, R0, access_flags, JVM_ACC_STATIC_BIT);
+ 897     __ bfalse(CCR0, method_is_not_static);
+ 898 
+ 899     // constants = method-&gt;constants();
+ 900     __ ld(R11_scratch1, in_bytes(Method::const_offset()), R19_method);
+ 901     __ ld(R11_scratch1, in_bytes(ConstMethod::constants_offset()), R11_scratch1);
+ 902     // pool_holder = method-&gt;constants()-&gt;pool_holder();
+ 903     __ ld(R11_scratch1/*pool_holder*/, ConstantPool::pool_holder_offset_in_bytes(),
+ 904           R11_scratch1/*constants*/);
+ 905 
+ 906     const int mirror_offset = in_bytes(Klass::java_mirror_offset());
+ 907 
+ 908     // mirror = pool_holder-&gt;klass_part()-&gt;java_mirror();
+ 909     __ ld(R0/*mirror*/, mirror_offset, R11_scratch1/*pool_holder*/);
+ 910     // state-&gt;_native_mirror = mirror;
+ 911 
+ 912     __ ld(R11_scratch1, 0, R1_SP);
+ 913     __ std(R0/*mirror*/, _ijava_state_neg(oop_tmp), R11_scratch1);
+ 914     // R4_ARG2 = &amp;state-&gt;_oop_temp;
+ 915     __ addi(R4_ARG2, R11_scratch1, _ijava_state_neg(oop_tmp));
+ 916     __ BIND(method_is_not_static);
+ 917   }
+ 918 
+ 919   // At this point, arguments have been copied off the stack into
+ 920   // their JNI positions. Oops are boxed in-place on the stack, with
+ 921   // handles copied to arguments. The result handler address is in a
+ 922   // register.
+ 923 
+ 924   // Pass JNIEnv address as first parameter.
+ 925   __ addir(R3_ARG1, thread_(jni_environment));
+ 926 
+ 927   // Load the native_method entry before we change the thread state.
+ 928   __ ld(native_method_fd, method_(native_function));
+ 929 
+ 930   //=============================================================================
+ 931   // Transition from _thread_in_Java to _thread_in_native. As soon as
+ 932   // we make this change the safepoint code needs to be certain that
+ 933   // the last Java frame we established is good. The pc in that frame
+ 934   // just needs to be near here not an actual return address.
+ 935 
+ 936   // We use release_store_fence to update values like the thread state, where
+ 937   // we don't want the current thread to continue until all our prior memory
+ 938   // accesses (including the new thread state) are visible to other threads.
+ 939   __ li(R0, _thread_in_native);
+ 940   __ release();
+ 941 
+ 942   // TODO PPC port assert(4 == JavaThread::sz_thread_state(), "unexpected field size");
+ 943   __ stw(R0, thread_(thread_state));
+ 944 
+ 945   if (UseMembar) {
+ 946     __ fence();
+ 947   }
+ 948 
+ 949   //=============================================================================
+ 950   // Call the native method. Argument registers must not have been
+ 951   // overwritten since "__ call_stub(signature_handler);" (except for
+ 952   // ARG1 and ARG2 for static methods).
+ 953   __ call_c(native_method_fd);
+ 954 
+ 955   __ li(R0, 0);
+ 956   __ ld(R11_scratch1, 0, R1_SP);
+ 957   __ std(R3_RET, _ijava_state_neg(lresult), R11_scratch1);
+ 958   __ stfd(F1_RET, _ijava_state_neg(fresult), R11_scratch1);
+ 959   __ std(R0/*mirror*/, _ijava_state_neg(oop_tmp), R11_scratch1); // reset
+ 960 
+ 961   // Note: C++ interpreter needs the following here:
+ 962   // The frame_manager_lr field, which we use for setting the last
+ 963   // java frame, gets overwritten by the signature handler. Restore
+ 964   // it now.
+ 965   //__ get_PC_trash_LR(R11_scratch1);
+ 966   //__ std(R11_scratch1, _top_ijava_frame_abi(frame_manager_lr), R1_SP);
+ 967 
+ 968   // Because of GC R19_method may no longer be valid.
+ 969 
+ 970   // Block, if necessary, before resuming in _thread_in_Java state.
+ 971   // In order for GC to work, don't clear the last_Java_sp until after
+ 972   // blocking.
+ 973 
+ 974   //=============================================================================
+ 975   // Switch thread to "native transition" state before reading the
+ 976   // synchronization state. This additional state is necessary
+ 977   // because reading and testing the synchronization state is not
+ 978   // atomic w.r.t. GC, as this scenario demonstrates: Java thread A,
+ 979   // in _thread_in_native state, loads _not_synchronized and is
+ 980   // preempted. VM thread changes sync state to synchronizing and
+ 981   // suspends threads for GC. Thread A is resumed to finish this
+ 982   // native method, but doesn't block here since it didn't see any
+ 983   // synchronization in progress, and escapes.
+ 984 
+ 985   // We use release_store_fence to update values like the thread state, where
+ 986   // we don't want the current thread to continue until all our prior memory
+ 987   // accesses (including the new thread state) are visible to other threads.
+ 988   __ li(R0/*thread_state*/, _thread_in_native_trans);
+ 989   __ release();
+ 990   __ stw(R0/*thread_state*/, thread_(thread_state));
+ 991   if (UseMembar) {
+ 992     __ fence();
+ 993   }
+ 994   // Write serialization page so that the VM thread can do a pseudo remote
+ 995   // membar. We use the current thread pointer to calculate a thread
+ 996   // specific offset to write to within the page. This minimizes bus
+ 997   // traffic due to cache line collision.
+ 998   else {
+ 999     __ serialize_memory(R16_thread, R11_scratch1, R12_scratch2);
+1000   }
+1001 
+1002   // Now before we return to java we must look for a current safepoint
+1003   // (a new safepoint can not start since we entered native_trans).
+1004   // We must check here because a current safepoint could be modifying
+1005   // the callers registers right this moment.
+1006 
+1007   // Acquire isn't strictly necessary here because of the fence, but
+1008   // sync_state is declared to be volatile, so we do it anyway
+1009   // (cmp-br-isync on one path, release (same as acquire on PPC64) on the other path).
+1010   int sync_state_offs = __ load_const_optimized(sync_state_addr, SafepointSynchronize::address_of_state(), /*temp*/R0, true);
+1011 
+1012   // TODO PPC port assert(4 == SafepointSynchronize::sz_state(), "unexpected field size");
+1013   __ lwz(sync_state, sync_state_offs, sync_state_addr);
+1014 
+1015   // TODO PPC port assert(4 == Thread::sz_suspend_flags(), "unexpected field size");
+1016   __ lwz(suspend_flags, thread_(suspend_flags));
+1017 
+1018   Label sync_check_done;
+1019   Label do_safepoint;
+1020   // No synchronization in progress nor yet synchronized.
+1021   __ cmpwi(CCR0, sync_state, SafepointSynchronize::_not_synchronized);
+1022   // Not suspended.
+1023   __ cmpwi(CCR1, suspend_flags, 0);
+1024 
+1025   __ bne(CCR0, do_safepoint);
+1026   __ beq(CCR1, sync_check_done);
+1027   __ bind(do_safepoint);
+1028   __ isync();
+1029   // Block. We do the call directly and leave the current
+1030   // last_Java_frame setup undisturbed. We must save any possible
+1031   // native result across the call. No oop is present.
+1032 
+1033   __ mr(R3_ARG1, R16_thread);
+1034 #if defined(ABI_ELFv2)
+1035   __ call_c(CAST_FROM_FN_PTR(address, JavaThread::check_special_condition_for_native_trans),
+1036             relocInfo::none);
+1037 #else
+1038   __ call_c(CAST_FROM_FN_PTR(FunctionDescriptor*, JavaThread::check_special_condition_for_native_trans),
+1039             relocInfo::none);
+1040 #endif
+1041 
+1042   __ bind(sync_check_done);
+1043 
+1044   //=============================================================================
+1045   // &lt;&lt;&lt;&lt;&lt;&lt; Back in Interpreter Frame &gt;&gt;&gt;&gt;&gt;
+1046 
+1047   // We are in thread_in_native_trans here and back in the normal
+1048   // interpreter frame. We don't have to do anything special about
+1049   // safepoints and we can switch to Java mode anytime we are ready.
+1050 
+1051   // Note: frame::interpreter_frame_result has a dependency on how the
+1052   // method result is saved across the call to post_method_exit. For
+1053   // native methods it assumes that the non-FPU/non-void result is
+1054   // saved in _native_lresult and a FPU result in _native_fresult. If
+1055   // this changes then the interpreter_frame_result implementation
+1056   // will need to be updated too.
+1057 
+1058   // On PPC64, we have stored the result directly after the native call.
+1059 
+1060   //=============================================================================
+1061   // Back in Java
+1062 
+1063   // We use release_store_fence to update values like the thread state, where
+1064   // we don't want the current thread to continue until all our prior memory
+1065   // accesses (including the new thread state) are visible to other threads.
+1066   __ li(R0/*thread_state*/, _thread_in_Java);
+1067   __ release();
+1068   __ stw(R0/*thread_state*/, thread_(thread_state));
+1069   if (UseMembar) {
+1070     __ fence();
+1071   }
+1072 
+1073   __ reset_last_Java_frame();
+1074 
+1075   // Jvmdi/jvmpi support. Whether we've got an exception pending or
+1076   // not, and whether unlocking throws an exception or not, we notify
+1077   // on native method exit. If we do have an exception, we'll end up
+1078   // in the caller's context to handle it, so if we don't do the
+1079   // notify here, we'll drop it on the floor.
+1080   __ notify_method_exit(true/*native method*/,
+1081                         ilgl /*illegal state (not used for native methods)*/,
+1082                         InterpreterMacroAssembler::NotifyJVMTI,
+1083                         false /*check_exceptions*/);
+1084 
+1085   //=============================================================================
+1086   // Handle exceptions
+1087 
+1088   if (synchronized) {
+1089     // Don't check for exceptions since we're still in the i2n frame. Do that
+1090     // manually afterwards.
+1091     unlock_method(false);
+1092   }
+1093 
+1094   // Reset active handles after returning from native.
+1095   // thread-&gt;active_handles()-&gt;clear();
+1096   __ ld(active_handles, thread_(active_handles));
+1097   // TODO PPC port assert(4 == JNIHandleBlock::top_size_in_bytes(), "unexpected field size");
+1098   __ li(R0, 0);
+1099   __ stw(R0, JNIHandleBlock::top_offset_in_bytes(), active_handles);
+1100 
+1101   Label exception_return_sync_check_already_unlocked;
+1102   __ ld(R0/*pending_exception*/, thread_(pending_exception));
+1103   __ cmpdi(CCR0, R0/*pending_exception*/, 0);
+1104   __ bne(CCR0, exception_return_sync_check_already_unlocked);
+1105 
+1106   //-----------------------------------------------------------------------------
+1107   // No exception pending.
+1108 
+1109   // Move native method result back into proper registers and return.
+1110   // Invoke result handler (may unbox/promote).
+1111   __ ld(R11_scratch1, 0, R1_SP);
+1112   __ ld(R3_RET, _ijava_state_neg(lresult), R11_scratch1);
+1113   __ lfd(F1_RET, _ijava_state_neg(fresult), R11_scratch1);
+1114   __ call_stub(result_handler_addr);
+1115 
+1116   __ merge_frames(/*top_frame_sp*/ R21_sender_SP, /*return_pc*/ R0, R11_scratch1, R12_scratch2);
+1117 
+1118   // Must use the return pc which was loaded from the caller's frame
+1119   // as the VM uses return-pc-patching for deoptimization.
+1120   __ mtlr(R0);
+1121   __ blr();
+1122 
+1123   //-----------------------------------------------------------------------------
+1124   // An exception is pending. We call into the runtime only if the
+1125   // caller was not interpreted. If it was interpreted the
+1126   // interpreter will do the correct thing. If it isn't interpreted
+1127   // (call stub/compiled code) we will change our return and continue.
+1128 
+1129   __ BIND(exception_return_sync_check);
+1130 
+1131   if (synchronized) {
+1132     // Don't check for exceptions since we're still in the i2n frame. Do that
+1133     // manually afterwards.
+1134     unlock_method(false);
+1135   }
+1136   __ BIND(exception_return_sync_check_already_unlocked);
+1137 
+1138   const Register return_pc = R31;
+1139 
+1140   __ ld(return_pc, 0, R1_SP);
+1141   __ ld(return_pc, _abi(lr), return_pc);
+1142 
+1143   // Get the address of the exception handler.
+1144   __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::exception_handler_for_return_address),
+1145                   R16_thread,
+1146                   return_pc /* return pc */);
+1147   __ merge_frames(/*top_frame_sp*/ R21_sender_SP, noreg, R11_scratch1, R12_scratch2);
+1148 
+1149   // Load the PC of the the exception handler into LR.
+1150   __ mtlr(R3_RET);
+1151 
+1152   // Load exception into R3_ARG1 and clear pending exception in thread.
+1153   __ ld(R3_ARG1/*exception*/, thread_(pending_exception));
+1154   __ li(R4_ARG2, 0);
+1155   __ std(R4_ARG2, thread_(pending_exception));
+1156 
+1157   // Load the original return pc into R4_ARG2.
+1158   __ mr(R4_ARG2/*issuing_pc*/, return_pc);
+1159 
+1160   // Return to exception handler.
+1161   __ blr();
+1162 
+1163   //=============================================================================
+1164   // Counter overflow.
+1165 
+1166   if (inc_counter) {
+1167     // Handle invocation counter overflow.
+1168     __ bind(invocation_counter_overflow);
+1169 
+1170     generate_counter_overflow(continue_after_compile);
+1171   }
+1172 
+1173   return entry;
+1174 }
+1175 
+1176 // Generic interpreted method entry to (asm) interpreter.
+1177 //
+1178 address TemplateInterpreterGenerator::generate_normal_entry(bool synchronized) {
+1179   bool inc_counter = UseCompiler || CountCompiledCalls;
+1180   address entry = __ pc();
+1181   // Generate the code to allocate the interpreter stack frame.
+1182   Register Rsize_of_parameters = R4_ARG2, // Written by generate_fixed_frame.
+1183            Rsize_of_locals     = R5_ARG3; // Written by generate_fixed_frame.
+1184 
+1185   generate_fixed_frame(false, Rsize_of_parameters, Rsize_of_locals);
+1186 
+1187 #ifdef FAST_DISPATCH
+1188   __ unimplemented("Fast dispatch in generate_normal_entry");
+1189 #if 0
+1190   __ set((intptr_t)Interpreter::dispatch_table(), IdispatchTables);
+1191   // Set bytecode dispatch table base.
+1192 #endif
+1193 #endif
+1194 
+1195   // --------------------------------------------------------------------------
+1196   // Zero out non-parameter locals.
+1197   // Note: *Always* zero out non-parameter locals as Sparc does. It's not
+1198   // worth to ask the flag, just do it.
+1199   Register Rslot_addr = R6_ARG4,
+1200            Rnum       = R7_ARG5;
+1201   Label Lno_locals, Lzero_loop;
+1202 
+1203   // Set up the zeroing loop.
+1204   __ subf(Rnum, Rsize_of_parameters, Rsize_of_locals);
+1205   __ subf(Rslot_addr, Rsize_of_parameters, R18_locals);
+1206   __ srdi_(Rnum, Rnum, Interpreter::logStackElementSize);
+1207   __ beq(CCR0, Lno_locals);
+1208   __ li(R0, 0);
+1209   __ mtctr(Rnum);
+1210 
+1211   // The zero locals loop.
+1212   __ bind(Lzero_loop);
+1213   __ std(R0, 0, Rslot_addr);
+1214   __ addi(Rslot_addr, Rslot_addr, -Interpreter::stackElementSize);
+1215   __ bdnz(Lzero_loop);
+1216 
+1217   __ bind(Lno_locals);
+1218 
+1219   // --------------------------------------------------------------------------
+1220   // Counter increment and overflow check.
+1221   Label invocation_counter_overflow,
+1222         profile_method,
+1223         profile_method_continue;
+1224   if (inc_counter || ProfileInterpreter) {
+1225 
+1226     Register Rdo_not_unlock_if_synchronized_addr = R11_scratch1;
+1227     if (synchronized) {
+1228       // Since at this point in the method invocation the exception handler
+1229       // would try to exit the monitor of synchronized methods which hasn't
+1230       // been entered yet, we set the thread local variable
+1231       // _do_not_unlock_if_synchronized to true. If any exception was thrown by
+1232       // runtime, exception handling i.e. unlock_if_synchronized_method will
+1233       // check this thread local flag.
+1234       // This flag has two effects, one is to force an unwind in the topmost
+1235       // interpreter frame and not perform an unlock while doing so.
+1236       __ li(R0, 1);
+1237       __ stb(R0, in_bytes(JavaThread::do_not_unlock_if_synchronized_offset()), R16_thread);
+1238     }
+1239 
+1240     // Argument and return type profiling.
+1241     __ profile_parameters_type(R3_ARG1, R4_ARG2, R5_ARG3, R6_ARG4);
+1242 
+1243     // Increment invocation counter and check for overflow.
+1244     if (inc_counter) {
+1245       generate_counter_incr(&amp;invocation_counter_overflow, &amp;profile_method, &amp;profile_method_continue);
+1246     }
+1247 
+1248     __ bind(profile_method_continue);
+1249 
+1250     // Reset the _do_not_unlock_if_synchronized flag.
+1251     if (synchronized) {
+1252       __ li(R0, 0);
+1253       __ stb(R0, in_bytes(JavaThread::do_not_unlock_if_synchronized_offset()), R16_thread);
+1254     }
+1255   }
+1256 
+1257   // --------------------------------------------------------------------------
+1258   // Locking of synchronized methods. Must happen AFTER invocation_counter
+1259   // check and stack overflow check, so method is not locked if overflows.
+1260   if (synchronized) {
+1261     lock_method(R3_ARG1, R4_ARG2, R5_ARG3);
+1262   }
+1263 #ifdef ASSERT
+1264   else {
+1265     Label Lok;
+1266     __ lwz(R0, in_bytes(Method::access_flags_offset()), R19_method);
+1267     __ andi_(R0, R0, JVM_ACC_SYNCHRONIZED);
+1268     __ asm_assert_eq("method needs synchronization", 0x8521);
+1269     __ bind(Lok);
+1270   }
+1271 #endif // ASSERT
+1272 
+1273   __ verify_thread();
+1274 
+1275   // --------------------------------------------------------------------------
+1276   // JVMTI support
+1277   __ notify_method_entry();
+1278 
+1279   // --------------------------------------------------------------------------
+1280   // Start executing instructions.
+1281   __ dispatch_next(vtos);
+1282 
+1283   // --------------------------------------------------------------------------
+1284   // Out of line counter overflow and MDO creation code.
+1285   if (ProfileInterpreter) {
+1286     // We have decided to profile this method in the interpreter.
+1287     __ bind(profile_method);
+1288     __ call_VM(noreg, CAST_FROM_FN_PTR(address, InterpreterRuntime::profile_method));
+1289     __ set_method_data_pointer_for_bcp();
+1290     __ b(profile_method_continue);
+1291   }
+1292 
+1293   if (inc_counter) {
+1294     // Handle invocation counter overflow.
+1295     __ bind(invocation_counter_overflow);
+1296     generate_counter_overflow(profile_method_continue);
+1297   }
+1298   return entry;
+1299 }
+1300 
+1301 // =============================================================================
+1302 // Entry points
+1303 
+1304 address AbstractInterpreterGenerator::generate_method_entry(
+1305                                         AbstractInterpreter::MethodKind kind) {
+1306   // Determine code generation flags.
+1307   bool synchronized = false;
+1308   address entry_point = NULL;
+1309 
+1310   switch (kind) {
+1311   case Interpreter::zerolocals             :                                                                             break;
+1312   case Interpreter::zerolocals_synchronized: synchronized = true;                                                        break;
+1313   case Interpreter::native                 : entry_point = ((InterpreterGenerator*) this)-&gt;generate_native_entry(false); break;
+1314   case Interpreter::native_synchronized    : entry_point = ((InterpreterGenerator*) this)-&gt;generate_native_entry(true);  break;
+1315   case Interpreter::empty                  : entry_point = ((InterpreterGenerator*) this)-&gt;generate_empty_entry();       break;
+1316   case Interpreter::accessor               : entry_point = ((InterpreterGenerator*) this)-&gt;generate_accessor_entry();    break;
+1317   case Interpreter::abstract               : entry_point = ((InterpreterGenerator*) this)-&gt;generate_abstract_entry();    break;
+1318 
+1319   case Interpreter::java_lang_math_sin     : // fall thru
+1320   case Interpreter::java_lang_math_cos     : // fall thru
+1321   case Interpreter::java_lang_math_tan     : // fall thru
+1322   case Interpreter::java_lang_math_abs     : // fall thru
+1323   case Interpreter::java_lang_math_log     : // fall thru
+1324   case Interpreter::java_lang_math_log10   : // fall thru
+1325   case Interpreter::java_lang_math_sqrt    : // fall thru
+1326   case Interpreter::java_lang_math_pow     : // fall thru
+1327   case Interpreter::java_lang_math_exp     : entry_point = ((InterpreterGenerator*) this)-&gt;generate_math_entry(kind);    break;
+1328   case Interpreter::java_lang_ref_reference_get
+1329                                            : entry_point = ((InterpreterGenerator*)this)-&gt;generate_Reference_get_entry(); break;
+1330   default                                  : ShouldNotReachHere();                                                       break;
+1331   }
+1332 
+1333   if (entry_point) {
+1334     return entry_point;
+1335   }
+1336 
+1337   return ((InterpreterGenerator*) this)-&gt;generate_normal_entry(synchronized);
+1338 }
+1339 
+1340 // These should never be compiled since the interpreter will prefer
+1341 // the compiled version to the intrinsic version.
+1342 bool AbstractInterpreter::can_be_compiled(methodHandle m) {
+1343   return !math_entry_available(method_kind(m));
+1344 }
+1345 
+1346 // How much stack a method activation needs in stack slots.
+1347 // We must calc this exactly like in generate_fixed_frame.
+1348 // Note: This returns the conservative size assuming maximum alignment.
+1349 int AbstractInterpreter::size_top_interpreter_activation(Method* method) {
+1350   const int max_alignment_size = 2;
+1351   const int abi_scratch = frame::abi_reg_args_size;
+1352   return method-&gt;max_locals() + method-&gt;max_stack() +
+1353          frame::interpreter_frame_monitor_size() + max_alignment_size + abi_scratch;
+1354 }
+1355 
+1356 // Returns number of stackElementWords needed for the interpreter frame with the
+1357 // given sections.
+1358 // This overestimates the stack by one slot in case of alignments.
+1359 int AbstractInterpreter::size_activation(int max_stack,
+1360                                          int temps,
+1361                                          int extra_args,
+1362                                          int monitors,
+1363                                          int callee_params,
+1364                                          int callee_locals,
+1365                                          bool is_top_frame) {
+1366   // Note: This calculation must exactly parallel the frame setup
+1367   // in AbstractInterpreterGenerator::generate_method_entry.
+1368   assert(Interpreter::stackElementWords == 1, "sanity");
+1369   const int max_alignment_space = StackAlignmentInBytes / Interpreter::stackElementSize;
+1370   const int abi_scratch = is_top_frame ? (frame::abi_reg_args_size / Interpreter::stackElementSize) :
+1371                                          (frame::abi_minframe_size / Interpreter::stackElementSize);
+1372   const int size =
+1373     max_stack                                                +
+1374     (callee_locals - callee_params)                          +
+1375     monitors * frame::interpreter_frame_monitor_size()       +
+1376     max_alignment_space                                      +
+1377     abi_scratch                                              +
+1378     frame::ijava_state_size / Interpreter::stackElementSize;
+1379 
+1380   // Fixed size of an interpreter frame, align to 16-byte.
+1381   return (size &amp; -2);
+1382 }
+1383 
+1384 // Fills a sceletal interpreter frame generated during deoptimizations.
+1385 //
+1386 // Parameters:
+1387 //
+1388 // interpreter_frame != NULL:
+1389 //   set up the method, locals, and monitors.
+1390 //   The frame interpreter_frame, if not NULL, is guaranteed to be the
+1391 //   right size, as determined by a previous call to this method.
+1392 //   It is also guaranteed to be walkable even though it is in a skeletal state
+1393 //
+1394 // is_top_frame == true:
+1395 //   We're processing the *oldest* interpreter frame!
+1396 //
+1397 // pop_frame_extra_args:
+1398 //   If this is != 0 we are returning to a deoptimized frame by popping
+1399 //   off the callee frame. We want to re-execute the call that called the
+1400 //   callee interpreted, but since the return to the interpreter would pop
+1401 //   the arguments off advance the esp by dummy popframe_extra_args slots.
+1402 //   Popping off those will establish the stack layout as it was before the call.
+1403 //
+1404 void AbstractInterpreter::layout_activation(Method* method,
+1405                                             int tempcount,
+1406                                             int popframe_extra_args,
+1407                                             int moncount,
+1408                                             int caller_actual_parameters,
+1409                                             int callee_param_count,
+1410                                             int callee_locals_count,
+1411                                             frame* caller,
+1412                                             frame* interpreter_frame,
+1413                                             bool is_top_frame,
+1414                                             bool is_bottom_frame) {
+1415 
+1416   const int abi_scratch = is_top_frame ? (frame::abi_reg_args_size / Interpreter::stackElementSize) :
+1417                                          (frame::abi_minframe_size / Interpreter::stackElementSize);
+1418 
+1419   intptr_t* locals_base  = (caller-&gt;is_interpreted_frame()) ?
+1420     caller-&gt;interpreter_frame_esp() + caller_actual_parameters :
+1421     caller-&gt;sp() + method-&gt;max_locals() - 1 + (frame::abi_minframe_size / Interpreter::stackElementSize) ;
+1422 
+1423   intptr_t* monitor_base = caller-&gt;sp() - frame::ijava_state_size / Interpreter::stackElementSize ;
+1424   intptr_t* monitor      = monitor_base - (moncount * frame::interpreter_frame_monitor_size());
+1425   intptr_t* esp_base     = monitor - 1;
+1426   intptr_t* esp          = esp_base - tempcount - popframe_extra_args;
+1427   intptr_t* sp           = (intptr_t *) (((intptr_t) (esp_base - callee_locals_count + callee_param_count - method-&gt;max_stack()- abi_scratch)) &amp; -StackAlignmentInBytes);
+1428   intptr_t* sender_sp    = caller-&gt;sp() + (frame::abi_minframe_size - frame::abi_reg_args_size) / Interpreter::stackElementSize;
+1429   intptr_t* top_frame_sp = is_top_frame ? sp : sp + (frame::abi_minframe_size - frame::abi_reg_args_size) / Interpreter::stackElementSize;
+1430 
+1431   interpreter_frame-&gt;interpreter_frame_set_method(method);
+1432   interpreter_frame-&gt;interpreter_frame_set_locals(locals_base);
+1433   interpreter_frame-&gt;interpreter_frame_set_cpcache(method-&gt;constants()-&gt;cache());
+1434   interpreter_frame-&gt;interpreter_frame_set_esp(esp);
+1435   interpreter_frame-&gt;interpreter_frame_set_monitor_end((BasicObjectLock *)monitor);
+1436   interpreter_frame-&gt;interpreter_frame_set_top_frame_sp(top_frame_sp);
+1437   if (!is_bottom_frame) {
+1438     interpreter_frame-&gt;interpreter_frame_set_sender_sp(sender_sp);
+1439   }
+1440 }
+1441 
+1442 // =============================================================================
+1443 // Exceptions
+1444 
+1445 void TemplateInterpreterGenerator::generate_throw_exception() {
+1446   Register Rexception    = R17_tos,
+1447            Rcontinuation = R3_RET;
+1448 
+1449   // --------------------------------------------------------------------------
+1450   // Entry point if an method returns with a pending exception (rethrow).
+1451   Interpreter::_rethrow_exception_entry = __ pc();
+1452   {
+1453     __ restore_interpreter_state(R11_scratch1); // Sets R11_scratch1 = fp.
+1454     __ ld(R12_scratch2, _ijava_state_neg(top_frame_sp), R11_scratch1);
+1455     __ resize_frame_absolute(R12_scratch2, R11_scratch1, R0);
+1456 
+1457     // Compiled code destroys templateTableBase, reload.
+1458     __ load_const_optimized(R25_templateTableBase, (address)Interpreter::dispatch_table((TosState)0), R11_scratch1);
+1459   }
+1460 
+1461   // Entry point if a interpreted method throws an exception (throw).
+1462   Interpreter::_throw_exception_entry = __ pc();
+1463   {
+1464     __ mr(Rexception, R3_RET);
+1465 
+1466     __ verify_thread();
+1467     __ verify_oop(Rexception);
+1468 
+1469     // Expression stack must be empty before entering the VM in case of an exception.
+1470     __ empty_expression_stack();
+1471     // Find exception handler address and preserve exception oop.
+1472     // Call C routine to find handler and jump to it.
+1473     __ call_VM(Rexception, CAST_FROM_FN_PTR(address, InterpreterRuntime::exception_handler_for_exception), Rexception);
+1474     __ mtctr(Rcontinuation);
+1475     // Push exception for exception handler bytecodes.
+1476     __ push_ptr(Rexception);
+1477 
+1478     // Jump to exception handler (may be remove activation entry!).
+1479     __ bctr();
+1480   }
+1481 
+1482   // If the exception is not handled in the current frame the frame is
+1483   // removed and the exception is rethrown (i.e. exception
+1484   // continuation is _rethrow_exception).
+1485   //
+1486   // Note: At this point the bci is still the bxi for the instruction
+1487   // which caused the exception and the expression stack is
+1488   // empty. Thus, for any VM calls at this point, GC will find a legal
+1489   // oop map (with empty expression stack).
+1490 
+1491   // In current activation
+1492   // tos: exception
+1493   // bcp: exception bcp
+1494 
+1495   // --------------------------------------------------------------------------
+1496   // JVMTI PopFrame support
+1497 
+1498   Interpreter::_remove_activation_preserving_args_entry = __ pc();
+1499   {
+1500     // Set the popframe_processing bit in popframe_condition indicating that we are
+1501     // currently handling popframe, so that call_VMs that may happen later do not
+1502     // trigger new popframe handling cycles.
+1503     __ lwz(R11_scratch1, in_bytes(JavaThread::popframe_condition_offset()), R16_thread);
+1504     __ ori(R11_scratch1, R11_scratch1, JavaThread::popframe_processing_bit);
+1505     __ stw(R11_scratch1, in_bytes(JavaThread::popframe_condition_offset()), R16_thread);
+1506 
+1507     // Empty the expression stack, as in normal exception handling.
+1508     __ empty_expression_stack();
+1509     __ unlock_if_synchronized_method(vtos, /* throw_monitor_exception */ false, /* install_monitor_exception */ false);
+1510 
+1511     // Check to see whether we are returning to a deoptimized frame.
+1512     // (The PopFrame call ensures that the caller of the popped frame is
+1513     // either interpreted or compiled and deoptimizes it if compiled.)
+1514     // Note that we don't compare the return PC against the
+1515     // deoptimization blob's unpack entry because of the presence of
+1516     // adapter frames in C2.
+1517     Label Lcaller_not_deoptimized;
+1518     Register return_pc = R3_ARG1;
+1519     __ ld(return_pc, 0, R1_SP);
+1520     __ ld(return_pc, _abi(lr), return_pc);
+1521     __ call_VM_leaf(CAST_FROM_FN_PTR(address, InterpreterRuntime::interpreter_contains), return_pc);
+1522     __ cmpdi(CCR0, R3_RET, 0);
+1523     __ bne(CCR0, Lcaller_not_deoptimized);
+1524 
+1525     // The deoptimized case.
+1526     // In this case, we can't call dispatch_next() after the frame is
+1527     // popped, but instead must save the incoming arguments and restore
+1528     // them after deoptimization has occurred.
+1529     __ ld(R4_ARG2, in_bytes(Method::const_offset()), R19_method);
+1530     __ lhz(R4_ARG2 /* number of params */, in_bytes(ConstMethod::size_of_parameters_offset()), R4_ARG2);
+1531     __ slwi(R4_ARG2, R4_ARG2, Interpreter::logStackElementSize);
+1532     __ addi(R5_ARG3, R18_locals, Interpreter::stackElementSize);
+1533     __ subf(R5_ARG3, R4_ARG2, R5_ARG3);
+1534     // Save these arguments.
+1535     __ call_VM_leaf(CAST_FROM_FN_PTR(address, Deoptimization::popframe_preserve_args), R16_thread, R4_ARG2, R5_ARG3);
+1536 
+1537     // Inform deoptimization that it is responsible for restoring these arguments.
+1538     __ load_const_optimized(R11_scratch1, JavaThread::popframe_force_deopt_reexecution_bit);
+1539     __ stw(R11_scratch1, in_bytes(JavaThread::popframe_condition_offset()), R16_thread);
+1540 
+1541     // Return from the current method into the deoptimization blob. Will eventually
+1542     // end up in the deopt interpeter entry, deoptimization prepared everything that
+1543     // we will reexecute the call that called us.
+1544     __ merge_frames(/*top_frame_sp*/ R21_sender_SP, /*reload return_pc*/ return_pc, R11_scratch1, R12_scratch2);
+1545     __ mtlr(return_pc);
+1546     __ blr();
+1547 
+1548     // The non-deoptimized case.
+1549     __ bind(Lcaller_not_deoptimized);
+1550 
+1551     // Clear the popframe condition flag.
+1552     __ li(R0, 0);
+1553     __ stw(R0, in_bytes(JavaThread::popframe_condition_offset()), R16_thread);
+1554 
+1555     // Get out of the current method and re-execute the call that called us.
+1556     __ merge_frames(/*top_frame_sp*/ R21_sender_SP, /*return_pc*/ noreg, R11_scratch1, R12_scratch2);
+1557     __ restore_interpreter_state(R11_scratch1);
+1558     __ ld(R12_scratch2, _ijava_state_neg(top_frame_sp), R11_scratch1);
+1559     __ resize_frame_absolute(R12_scratch2, R11_scratch1, R0);
+1560     if (ProfileInterpreter) {
+1561       __ set_method_data_pointer_for_bcp();
+1562       __ ld(R11_scratch1, 0, R1_SP);
+1563       __ std(R28_mdx, _ijava_state_neg(mdx), R11_scratch1);
+1564     }
+1565 #if INCLUDE_JVMTI
+1566     Label L_done;
+1567 
+1568     __ lbz(R11_scratch1, 0, R14_bcp);
+1569     __ cmpwi(CCR0, R11_scratch1, Bytecodes::_invokestatic);
+1570     __ bne(CCR0, L_done);
+1571 
+1572     // The member name argument must be restored if _invokestatic is re-executed after a PopFrame call.
+1573     // Detect such a case in the InterpreterRuntime function and return the member name argument, or NULL.
+1574     __ ld(R4_ARG2, 0, R18_locals);
+1575     __ MacroAssembler::call_VM(R4_ARG2, CAST_FROM_FN_PTR(address, InterpreterRuntime::member_name_arg_or_null), R4_ARG2, R19_method, R14_bcp, false);
+1576     __ restore_interpreter_state(R11_scratch1, /*bcp_and_mdx_only*/ true);
+1577     __ cmpdi(CCR0, R4_ARG2, 0);
+1578     __ beq(CCR0, L_done);
+1579     __ std(R4_ARG2, wordSize, R15_esp);
+1580     __ bind(L_done);
+1581 #endif // INCLUDE_JVMTI
+1582     __ dispatch_next(vtos);
+1583   }
+1584   // end of JVMTI PopFrame support
+1585 
+1586   // --------------------------------------------------------------------------
+1587   // Remove activation exception entry.
+1588   // This is jumped to if an interpreted method can't handle an exception itself
+1589   // (we come from the throw/rethrow exception entry above). We're going to call
+1590   // into the VM to find the exception handler in the caller, pop the current
+1591   // frame and return the handler we calculated.
+1592   Interpreter::_remove_activation_entry = __ pc();
+1593   {
+1594     __ pop_ptr(Rexception);
+1595     __ verify_thread();
+1596     __ verify_oop(Rexception);
+1597     __ std(Rexception, in_bytes(JavaThread::vm_result_offset()), R16_thread);
+1598 
+1599     __ unlock_if_synchronized_method(vtos, /* throw_monitor_exception */ false, true);
+1600     __ notify_method_exit(false, vtos, InterpreterMacroAssembler::SkipNotifyJVMTI, false);
+1601 
+1602     __ get_vm_result(Rexception);
+1603 
+1604     // We are done with this activation frame; find out where to go next.
+1605     // The continuation point will be an exception handler, which expects
+1606     // the following registers set up:
+1607     //
+1608     // RET:  exception oop
+1609     // ARG2: Issuing PC (see generate_exception_blob()), only used if the caller is compiled.
+1610 
+1611     Register return_pc = R31; // Needs to survive the runtime call.
+1612     __ ld(return_pc, 0, R1_SP);
+1613     __ ld(return_pc, _abi(lr), return_pc);
+1614     __ call_VM_leaf(CAST_FROM_FN_PTR(address, SharedRuntime::exception_handler_for_return_address), R16_thread, return_pc);
+1615 
+1616     // Remove the current activation.
+1617     __ merge_frames(/*top_frame_sp*/ R21_sender_SP, /*return_pc*/ noreg, R11_scratch1, R12_scratch2);
+1618 
+1619     __ mr(R4_ARG2, return_pc);
+1620     __ mtlr(R3_RET);
+1621     __ mr(R3_RET, Rexception);
+1622     __ blr();
+1623   }
+1624 }
+1625 
+1626 // JVMTI ForceEarlyReturn support.
+1627 // Returns "in the middle" of a method with a "fake" return value.
+1628 address TemplateInterpreterGenerator::generate_earlyret_entry_for(TosState state) {
+1629 
+1630   Register Rscratch1 = R11_scratch1,
+1631            Rscratch2 = R12_scratch2;
+1632 
+1633   address entry = __ pc();
+1634   __ empty_expression_stack();
+1635 
+1636   __ load_earlyret_value(state, Rscratch1);
+1637 
+1638   __ ld(Rscratch1, in_bytes(JavaThread::jvmti_thread_state_offset()), R16_thread);
+1639   // Clear the earlyret state.
+1640   __ li(R0, 0);
+1641   __ stw(R0, in_bytes(JvmtiThreadState::earlyret_state_offset()), Rscratch1);
+1642 
+1643   __ remove_activation(state, false, false);
+1644   // Copied from TemplateTable::_return.
+1645   // Restoration of lr done by remove_activation.
+1646   switch (state) {
+1647     // Narrow result if state is itos but result type is smaller.
+1648     case itos: __ narrow(R17_tos); /* fall through */
+1649     case ltos:
+1650     case btos:
+1651     case ztos:
+1652     case ctos:
+1653     case stos:
+1654     case atos: __ mr(R3_RET, R17_tos); break;
+1655     case ftos:
+1656     case dtos: __ fmr(F1_RET, F15_ftos); break;
+1657     case vtos: // This might be a constructor. Final fields (and volatile fields on PPC64) need
+1658                // to get visible before the reference to the object gets stored anywhere.
+1659                __ membar(Assembler::StoreStore); break;
+1660     default  : ShouldNotReachHere();
+1661   }
+1662   __ blr();
+1663 
+1664   return entry;
+1665 } // end of ForceEarlyReturn support
+1666 
+1667 //-----------------------------------------------------------------------------
+1668 // Helper for vtos entry point generation
+1669 
+1670 void TemplateInterpreterGenerator::set_vtos_entry_points(Template* t,
+1671                                                          address&amp; bep,
+1672                                                          address&amp; cep,
+1673                                                          address&amp; sep,
+1674                                                          address&amp; aep,
+1675                                                          address&amp; iep,
+1676                                                          address&amp; lep,
+1677                                                          address&amp; fep,
+1678                                                          address&amp; dep,
+1679                                                          address&amp; vep) {
+1680   assert(t-&gt;is_valid() &amp;&amp; t-&gt;tos_in() == vtos, "illegal template");
+1681   Label L;
+1682 
+1683   aep = __ pc();  __ push_ptr();  __ b(L);
+1684   fep = __ pc();  __ push_f();    __ b(L);
+1685   dep = __ pc();  __ push_d();    __ b(L);
+1686   lep = __ pc();  __ push_l();    __ b(L);
+1687   __ align(32, 12, 24); // align L
+1688   bep = cep = sep =
+1689   iep = __ pc();  __ push_i();
+1690   vep = __ pc();
+1691   __ bind(L);
+1692   generate_and_dispatch(t);
+1693 }
+1694 
+1695 //-----------------------------------------------------------------------------
+1696 // Generation of individual instructions
+1697 
+1698 // helpers for generate_and_dispatch
+1699 
+1700 InterpreterGenerator::InterpreterGenerator(StubQueue* code)
+1701   : TemplateInterpreterGenerator(code) {
+1702   generate_all(); // Down here so it can be "virtual".
+1703 }
+1704 
+1705 //-----------------------------------------------------------------------------
+1706 
+1707 // Non-product code
+1708 #ifndef PRODUCT
+1709 address TemplateInterpreterGenerator::generate_trace_code(TosState state) {
+1710   //__ flush_bundle();
+1711   address entry = __ pc();
+1712 
+1713   const char *bname = NULL;
+1714   uint tsize = 0;
+1715   switch(state) {
+1716   case ftos:
+1717     bname = "trace_code_ftos {";
+1718     tsize = 2;
+1719     break;
+1720   case btos:
+1721     bname = "trace_code_btos {";
+1722     tsize = 2;
+1723     break;
+1724   case ztos:
+1725     bname = "trace_code_ztos {";
+1726     tsize = 2;
+1727     break;
+1728   case ctos:
+1729     bname = "trace_code_ctos {";
+1730     tsize = 2;
+1731     break;
+1732   case stos:
+1733     bname = "trace_code_stos {";
+1734     tsize = 2;
+1735     break;
+1736   case itos:
+1737     bname = "trace_code_itos {";
+1738     tsize = 2;
+1739     break;
+1740   case ltos:
+1741     bname = "trace_code_ltos {";
+1742     tsize = 3;
+1743     break;
+1744   case atos:
+1745     bname = "trace_code_atos {";
+1746     tsize = 2;
+1747     break;
+1748   case vtos:
+1749     // Note: In case of vtos, the topmost of stack value could be a int or doubl
+1750     // In case of a double (2 slots) we won't see the 2nd stack value.
+1751     // Maybe we simply should print the topmost 3 stack slots to cope with the problem.
+1752     bname = "trace_code_vtos {";
+1753     tsize = 2;
+1754 
+1755     break;
+1756   case dtos:
+1757     bname = "trace_code_dtos {";
+1758     tsize = 3;
+1759     break;
+1760   default:
+1761     ShouldNotReachHere();
+1762   }
+1763   BLOCK_COMMENT(bname);
+1764 
+1765   // Support short-cut for TraceBytecodesAt.
+1766   // Don't call into the VM if we don't want to trace to speed up things.
+1767   Label Lskip_vm_call;
+1768   if (TraceBytecodesAt &gt; 0 &amp;&amp; TraceBytecodesAt &lt; max_intx) {
+1769     int offs1 = __ load_const_optimized(R11_scratch1, (address) &amp;TraceBytecodesAt, R0, true);
+1770     int offs2 = __ load_const_optimized(R12_scratch2, (address) &amp;BytecodeCounter::_counter_value, R0, true);
+1771     __ ld(R11_scratch1, offs1, R11_scratch1);
+1772     __ lwa(R12_scratch2, offs2, R12_scratch2);
+1773     __ cmpd(CCR0, R12_scratch2, R11_scratch1);
+1774     __ blt(CCR0, Lskip_vm_call);
+1775   }
+1776 
+1777   __ push(state);
+1778   // Load 2 topmost expression stack values.
+1779   __ ld(R6_ARG4, tsize*Interpreter::stackElementSize, R15_esp);
+1780   __ ld(R5_ARG3, Interpreter::stackElementSize, R15_esp);
+1781   __ mflr(R31);
+1782   __ call_VM(noreg, CAST_FROM_FN_PTR(address, SharedRuntime::trace_bytecode), /* unused */ R4_ARG2, R5_ARG3, R6_ARG4, false);
+1783   __ mtlr(R31);
+1784   __ pop(state);
+1785 
+1786   if (TraceBytecodesAt &gt; 0 &amp;&amp; TraceBytecodesAt &lt; max_intx) {
+1787     __ bind(Lskip_vm_call);
+1788   }
+1789   __ blr();
+1790   BLOCK_COMMENT("} trace_code");
+1791   return entry;
+1792 }
+1793 
+1794 void TemplateInterpreterGenerator::count_bytecode() {
+1795   int offs = __ load_const_optimized(R11_scratch1, (address) &amp;BytecodeCounter::_counter_value, R12_scratch2, true);
+1796   __ lwz(R12_scratch2, offs, R11_scratch1);
+1797   __ addi(R12_scratch2, R12_scratch2, 1);
+1798   __ stw(R12_scratch2, offs, R11_scratch1);
+1799 }
+1800 
+1801 void TemplateInterpreterGenerator::histogram_bytecode(Template* t) {
+1802   int offs = __ load_const_optimized(R11_scratch1, (address) &amp;BytecodeHistogram::_counters[t-&gt;bytecode()], R12_scratch2, true);
+1803   __ lwz(R12_scratch2, offs, R11_scratch1);
+1804   __ addi(R12_scratch2, R12_scratch2, 1);
+1805   __ stw(R12_scratch2, offs, R11_scratch1);
+1806 }
+1807 
+1808 void TemplateInterpreterGenerator::histogram_bytecode_pair(Template* t) {
+1809   const Register addr = R11_scratch1,
+1810                  tmp  = R12_scratch2;
+1811   // Get index, shift out old bytecode, bring in new bytecode, and store it.
+1812   // _index = (_index &gt;&gt; log2_number_of_codes) |
+1813   //          (bytecode &lt;&lt; log2_number_of_codes);
+1814   int offs1 = __ load_const_optimized(addr, (address)&amp;BytecodePairHistogram::_index, tmp, true);
+1815   __ lwz(tmp, offs1, addr);
+1816   __ srwi(tmp, tmp, BytecodePairHistogram::log2_number_of_codes);
+1817   __ ori(tmp, tmp, ((int) t-&gt;bytecode()) &lt;&lt; BytecodePairHistogram::log2_number_of_codes);
+1818   __ stw(tmp, offs1, addr);
+1819 
+1820   // Bump bucket contents.
+1821   // _counters[_index] ++;
+1822   int offs2 = __ load_const_optimized(addr, (address)&amp;BytecodePairHistogram::_counters, R0, true);
+1823   __ sldi(tmp, tmp, LogBytesPerInt);
+1824   __ add(addr, tmp, addr);
+1825   __ lwz(tmp, offs2, addr);
+1826   __ addi(tmp, tmp, 1);
+1827   __ stw(tmp, offs2, addr);
+1828 }
+1829 
+1830 void TemplateInterpreterGenerator::trace_bytecode(Template* t) {
+1831   // Call a little run-time stub to avoid blow-up for each bytecode.
+1832   // The run-time runtime saves the right registers, depending on
+1833   // the tosca in-state for the given template.
+1834 
+1835   assert(Interpreter::trace_code(t-&gt;tos_in()) != NULL,
+1836          "entry must have been generated");
+1837 
+1838   // Note: we destroy LR here.
+1839   __ bl(Interpreter::trace_code(t-&gt;tos_in()));
+1840 }
+1841 
+1842 void TemplateInterpreterGenerator::stop_interpreter_at() {
+1843   Label L;
+1844   int offs1 = __ load_const_optimized(R11_scratch1, (address) &amp;StopInterpreterAt, R0, true);
+1845   int offs2 = __ load_const_optimized(R12_scratch2, (address) &amp;BytecodeCounter::_counter_value, R0, true);
+1846   __ ld(R11_scratch1, offs1, R11_scratch1);
+1847   __ lwa(R12_scratch2, offs2, R12_scratch2);
+1848   __ cmpd(CCR0, R12_scratch2, R11_scratch1);
+1849   __ bne(CCR0, L);
+1850   __ illtrap();
+1851   __ bind(L);
+1852 }
+1853 
+1854 #endif // !PRODUCT
+1855 #endif // !CC_INTERP
+<a name="5" id="anc5"></a><b style="font-size: large; color: red">--- EOF ---</b>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</pre><form name="eof"><input name="value" value="5" type="hidden" /></form></body></html>
